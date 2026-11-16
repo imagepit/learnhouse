@@ -2,7 +2,7 @@ from typing import List, Optional
 import json
 import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, Request, Query, BackgroundTasks
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, field_validator
 
 from sqlmodel import select
@@ -25,6 +25,7 @@ from src.db.courses.courses import (
 from src.security.auth import get_current_user
 from src.security.features_utils.dependencies import require_courses_feature
 from src.security.rbac import check_resource_access, AccessAction
+from src.services.courses.course_gradebook import CourseGradebook, get_course_gradebook
 from src.services.courses.courses import (
     create_course,
     get_course,
@@ -506,6 +507,19 @@ async def api_get_course_by_id(
     return await get_course_by_id(
         request, course_id, current_user=current_user, db_session=db_session
     )
+
+
+@router.get("/{course_uuid}/gradebook", response_model=CourseGradebook)
+async def api_get_course_gradebook(
+    request: Request,
+    response: Response,
+    course_uuid: str,
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: AsyncSession = Depends(get_db_session),
+) -> CourseGradebook:
+    gradebook = await get_course_gradebook(request, course_uuid, current_user, db_session)
+    response.headers["Cache-Control"] = "private, no-store"
+    return gradebook
 
 
 @router.get(
