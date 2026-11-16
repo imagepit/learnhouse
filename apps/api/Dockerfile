@@ -5,7 +5,7 @@ FROM python:3.14.7-alpine3.24
 # videos stream smoothly). bash runs the entrypoint; libstdc++ backs a few
 # prebuilt wheels. `apk upgrade` picks up fixes published after the base image.
 RUN apk upgrade --no-cache \
-    && apk add --no-cache curl netcat-openbsd ffmpeg bash libstdc++
+    && apk add --no-cache curl netcat-openbsd ffmpeg bash libstdc++ font-noto-cjk
 
 # uv manages the application environment. Remove the unused pip installer and
 # its bundled bootstrap wheel so their vendored packages do not ship at runtime.

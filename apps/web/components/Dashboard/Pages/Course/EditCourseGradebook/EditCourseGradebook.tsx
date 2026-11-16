@@ -5,7 +5,108 @@ import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useLHSession } from '@components/Contexts/LHSessionContext'
 import { Button } from '@components/ui/button'
-import { getCourseGradebook, gradebookCSV } from '@services/courses/courseGradebook'
+import {
+  getCourseGradebook,
+  getCourseReportCohorts,
+  getCourseReportPDF,
+  gradebookCSV,
+} from '@services/courses/courseGradebook'
+
+function downloadFile(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  // Let the browser start reading the object URL before releasing it.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function CourseReportDownload({ courseUuid, token }: { courseUuid: string; token: string }) {
+  const { t } = useTranslation()
+  const heading = useId()
+  const [company, setCompany] = useState('')
+  const [session, setSession] = useState('')
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [error, setError] = useState<'download_error' | 'conflict'>()
+  const { data, isLoading, error: cohortError } = useSWR(
+    ['course-report-cohorts', courseUuid, token],
+    ([, uuid, accessToken]) => getCourseReportCohorts(uuid, accessToken),
+    { shouldRetryOnError: false },
+  )
+  const label = 'dashboard.courses.settings.gradebook.report'
+  const companies = [...new Set(data?.map(cohort => cohort.company))]
+  const sessions = data?.filter(cohort => cohort.company === company) ?? []
+  const cohort = sessions.find(item => String(item.group_id) === session)
+
+  async function downloadPDF() {
+    if (!cohort) return
+    setError(undefined)
+    setIsDownloading(true)
+    try {
+      const result = await getCourseReportPDF(courseUuid, cohort, token)
+      if (result.status === 'cohort-conflict') {
+        setError('conflict')
+        return
+      }
+      downloadFile(result.pdf, `course-report-${cohort.group_id}.pdf`)
+    } catch {
+      setError('download_error')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  return (
+    <section aria-labelledby={heading} className="space-y-3 rounded-lg border bg-white p-4">
+      <h3 id={heading} className="font-semibold">{t(`${label}.title`)}</h3>
+      {isLoading && <p role="status" className="text-sm">{t(`${label}.loading`)}</p>}
+      {cohortError && <p role="alert" className="text-sm">{t(`${label}.load_error`)}</p>}
+      {data?.length === 0 && <p className="text-sm text-gray-600">{t(`${label}.empty`)}</p>}
+      {companies.length > 0 && (
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="grid min-w-0 max-w-full gap-1 text-sm font-medium">
+            {t(`${label}.company`)}
+            <select
+              className="w-64 max-w-full rounded-md border bg-white px-3 py-2"
+              value={company}
+              disabled={isDownloading}
+              onChange={event => {
+                setCompany(event.target.value)
+                setSession('')
+                setError(undefined)
+              }}
+            >
+              <option value="">{t(`${label}.choose_company`)}</option>
+              {companies.map(name => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </label>
+          <label className="grid min-w-0 max-w-full gap-1 text-sm font-medium">
+            {t(`${label}.session`)}
+            <select
+              className="w-64 max-w-full rounded-md border bg-white px-3 py-2 disabled:bg-gray-50"
+              value={session}
+              disabled={!company || isDownloading}
+              onChange={event => {
+                setSession(event.target.value)
+                setError(undefined)
+              }}
+            >
+              <option value="">{t(`${label}.choose_session`)}</option>
+              {sessions.map(item => (
+                <option key={item.group_id} value={String(item.group_id)}>{item.session}</option>
+              ))}
+            </select>
+          </label>
+          <Button type="button" disabled={!cohort || isDownloading} onClick={downloadPDF}>
+            {t(`${label}.${isDownloading ? 'downloading' : 'download'}`)}
+          </Button>
+        </div>
+      )}
+      {error && <p role="alert" className="text-sm text-red-700">{t(`${label}.${error}`)}</p>}
+    </section>
+  )
+}
 
 export default function EditCourseGradebook({ courseUuid }: { courseUuid: string }) {
   const { t } = useTranslation()
@@ -22,7 +123,12 @@ export default function EditCourseGradebook({ courseUuid }: { courseUuid: string
   if (isLoading || !token) return <p role="status" className="p-4 sm:p-8">{t(`${label}.loading`)}</p>
   if (error || !data) return <p role="alert" className="p-4 sm:p-8">{t(`${label}.error`)}</p>
   if (!data.learners.length || !data.assignments.length) {
-    return <p role="status" className="p-4 sm:p-8">{t(`${label}.empty`)}</p>
+    return (
+      <div className="space-y-4 p-4 sm:p-8">
+        <CourseReportDownload courseUuid={courseUuid} token={token} />
+        <p role="status">{t(`${label}.empty`)}</p>
+      </div>
+    )
   }
 
   const { assignments, learners } = data
@@ -67,13 +173,7 @@ export default function EditCourseGradebook({ courseUuid }: { courseUuid: string
       headers,
       ...makeRows(assignments).map(row => [row.username, ...row.cells]),
     ])
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `gradebook-${courseUuid}.csv`
-    link.click()
-    // Let the browser start reading the object URL before releasing it.
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    downloadFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `gradebook-${courseUuid}.csv`)
   }
 
   return (
@@ -82,6 +182,7 @@ export default function EditCourseGradebook({ courseUuid }: { courseUuid: string
         <h2 className="text-lg font-semibold">{t('dashboard.courses.settings.tabs.gradebook')}</h2>
         <Button type="button" onClick={downloadCSV}>{t(`${label}.download`)}</Button>
       </div>
+      <CourseReportDownload courseUuid={courseUuid} token={token} />
       {chapters.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor={chapterSelectId} className="text-sm font-medium">{t(`${label}.chapter`)}</label>
