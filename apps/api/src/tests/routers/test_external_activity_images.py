@@ -68,6 +68,20 @@ async def test_public_redirect_uses_dedicated_bucket_and_signed_response_control
     assert "fake-secret" not in response.headers["location"]
 
 
+async def test_checkout_timing_is_opt_in_and_preserves_redirect(images, caplog):
+    client, row, catalog = images
+    caplog.set_level("INFO", logger="uvicorn.error")
+    assert (await client.get(image_path(row))).status_code == 302
+    assert "outline_image_db_checkout_ms=" not in caplog.text
+
+    catalog.with_name("measure-db-checkout").touch()
+    assert (await client.get(image_path(row))).status_code == 302
+    samples = [r.getMessage() for r in caplog.records
+               if r.getMessage().startswith("outline_image_db_checkout_ms=")]
+    assert len(samples) == 1
+    assert float(samples[0].split("=")[1]) >= 0
+
+
 async def test_revoking_public_access_or_substituting_ids_never_redirects(images, db, course):
     client, row, _ = images
     for wrong, identify in [
