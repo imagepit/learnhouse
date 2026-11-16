@@ -7650,6 +7650,11 @@
         "apply": "Apply"
       },
       "image_block": {
+        "image_url": "Image URL",
+        "use_url": "Use URL",
+        "https_url_required": "Enter a valid HTTPS image URL.",
+        "alt_text": "Alternative text",
+        "load_failed": "The image could not be loaded.",
         "uploading": "Uploading image...",
         "drop_or_browse": "Drop your image here or click to browse",
         "supported_formats": "Supports JPG, PNG, WebP, and GIF",

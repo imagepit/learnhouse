@@ -27,6 +27,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator
+from urllib.parse import urlsplit
 
 MAX_DEPTH = 40
 MAX_DOC_CHARS = 2_000_000
@@ -110,7 +111,7 @@ SCHEMA: dict[str, Spec] = {
     "blockImage": Spec(
         BLOCK, None,
         ("blockObject", "size", "alignment", "unsplash_url", "unsplash_photographer_name",
-         "unsplash_photographer_url", "unsplash_photo_url"),
+         "unsplash_photographer_url", "unsplash_photo_url", "externalUrl", "outlineAttachmentId", "alt"),
         authorable=False, why_not=_MEDIA,
     ),
     "blockVideo": Spec(BLOCK, None, ("blockObject",), authorable=False, why_not=_MEDIA),
@@ -450,6 +451,19 @@ def _url(*, null: bool = True, empty: bool = False) -> Callable[[Any], str | Non
     return check
 
 
+def _https_image_url(v: Any) -> str | None:
+    if v is None:
+        return None
+    if is_web_url(v) and "\\" not in v:
+        try:
+            url = urlsplit(v)
+            if url.scheme == "https" and url.hostname and url.username is None and url.password is None:
+                return None
+        except ValueError:
+            pass
+    return "must be an HTTPS image URL without credentials"
+
+
 def _language(v: Any) -> str | None:
     if v is None:
         return None
@@ -556,7 +570,8 @@ _VALIDATORS: dict[str, dict[str, Callable[[Any], str | None]]] = {
     "blockImage": {
         "alignment": _ALIGN, "size": _image_size, "unsplash_url": _url(),
         "unsplash_photographer_name": _str(200), "unsplash_photographer_url": _url(),
-        "unsplash_photo_url": _url(),
+        "unsplash_photo_url": _url(), "externalUrl": _https_image_url,
+        "outlineAttachmentId": _str(36), "alt": _str(500),
     },
     "youtube": {"src": _url(null=False), "start": _int(0, 1_000_000, null=True)},
 }
@@ -1257,6 +1272,8 @@ class Editor:
             raise DocError(f"Unknown block type {t!r} at {list(path)}.")
         if not spec.attrs:
             raise DocError(f"A {t} has no settings to change.")
+        if t == "blockImage" and "outlineAttachmentId" in attrs:
+            raise DocError("Outline attachments are registered by an operator.")
         if t in MEDIA_TYPES and "blockObject" in attrs:
             raise DocError("The uploaded file of a media block cannot be changed; add a new one with add_media_block.")
         # What these blocks point at is picked in the editor, which checks the

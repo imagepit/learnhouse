@@ -13,6 +13,7 @@ import { useOrg } from '@components/Contexts/OrgContext'
 import { useCourse } from '@components/Contexts/CourseContext'
 import { getActivity } from '@services/courses/activities'
 import { getActivityBlockMediaDirectory } from '@services/media/media'
+import { activityImageUrl } from '@services/media/activityImages'
 import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -185,8 +186,11 @@ function PMNode({ node, ctx }: { node: any; ctx: RendererCtx }): React.ReactElem
     case 'blockImage': {
       const unsplashUrl: string | undefined = node.attrs?.unsplash_url || undefined
       const blockObject = node.attrs?.blockObject
-      let src: string | undefined = unsplashUrl || undefined
-      if (!src && blockObject && ctx.orgUuid && ctx.courseUuid) {
+      const attrs = node.attrs || {}
+      const referenceUrl = activityImageUrl(attrs, ctx.courseUuid, ctx.activityUuid)
+      const hasOutlineRef = attrs.outlineAttachmentId != null
+      let src = hasOutlineRef ? referenceUrl : referenceUrl || unsplashUrl
+      if (!src && !hasOutlineRef && blockObject && ctx.orgUuid && ctx.courseUuid) {
         const fileId = `${blockObject.content?.file_id}.${blockObject.content?.file_format}`
         src = getActivityBlockMediaDirectory(
           ctx.orgUuid,
@@ -205,7 +209,8 @@ function PMNode({ node, ctx }: { node: any; ctx: RendererCtx }): React.ReactElem
         <div className={`flex ${justify} my-2`}>
           <img
             src={src}
-            alt=""
+            alt={typeof attrs.alt === "string" ? attrs.alt : ""}
+            referrerPolicy={referenceUrl ? "no-referrer" : undefined}
             loading="lazy"
             className="rounded-md max-w-full h-auto border border-gray-100"
             style={{ maxHeight: 180 }}

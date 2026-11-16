@@ -1,5 +1,5 @@
 import { NodeViewWrapper } from '@tiptap/react'
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Resizable } from 're-resizable'
 import { Image, DownloadSimple, TextAlignLeft, TextAlignCenter, TextAlignRight, ArrowsOut, UploadSimple, CircleNotch, WarningCircle } from '@phosphor-icons/react'
 import toast from 'react-hot-toast'
@@ -12,6 +12,7 @@ import { useLHSession } from '@components/Contexts/LHSessionContext'
 import { constructAcceptValue } from '@/lib/constants';
 import Modal from '@components/Objects/StyledElements/Modal/Modal'
 import { useTranslation } from 'react-i18next'
+import { activityImageUrl, httpsImageUrl } from '@services/media/activityImages'
 import AIImageButton from '@components/Objects/AI/AIImageButton'
 
 const SUPPORTED_FILES = constructAcceptValue(['jpg', 'png', 'webp', 'gif'])
@@ -41,6 +42,10 @@ function ImageBlockComponent(props: any) {
   })
   const [alignment, setAlignment] = React.useState(props.node.attrs.alignment || 'center')
   const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const [urlInput, setUrlInput] = React.useState<string>()
+  const [failedSrc, setFailedSrc] = React.useState<string>()
+  const alt = typeof props.node.attrs.alt === 'string' ? props.node.attrs.alt : ''
+  const hasOutlineRef = props.node.attrs.outlineAttachmentId != null
 
   const unsplashUrl: string | null = props.node.attrs.unsplash_url || null
   const unsplashPhotographerName: string | null = props.node.attrs.unsplash_photographer_name || null
@@ -156,7 +161,24 @@ function ImageBlockComponent(props: any) {
     'imageBlock'
   ) : null;
 
-  const imageUrl = unsplashUrl || uploadedImageUrl;
+  const referenceUrl = activityImageUrl(
+    props.node.attrs,
+    course?.courseStructure?.course_uuid,
+    props.extension.options.activity?.activity_uuid,
+  )
+  const imageUrl = hasOutlineRef ? referenceUrl : referenceUrl || unsplashUrl || uploadedImageUrl
+  const hasImageError = (imageUrl && failedSrc === imageUrl) || (hasOutlineRef && !imageUrl)
+  const saveUrl = () => {
+    const url = httpsImageUrl((urlInput ?? httpsImageUrl(props.node.attrs.externalUrl) ?? '').trim())
+    if (!url) {
+      setError(t('editor.blocks.image_block.https_url_required'))
+      return
+    }
+    setError(null)
+    setUrlInput(undefined)
+    setFailedSrc(undefined)
+    props.updateAttributes({ externalUrl: url })
+  }
 
   // Remote (generated) images are stored under the same `unsplash_url` attr
   // the renderer already reads; no photographer credit applies to them.
@@ -194,8 +216,6 @@ function ImageBlockComponent(props: any) {
     </p>
   ) : null;
 
-  useEffect(() => {}, [course, org])
-
   const getItemsAlignmentClass = () => {
     switch (alignment) {
       case 'left':
@@ -208,6 +228,10 @@ function ImageBlockComponent(props: any) {
   };
 
   // Activity view mode - show only the image without block wrapper
+  if (!isEditable && hasImageError) {
+    return <NodeViewWrapper role="status">{t('editor.blocks.image_block.load_failed')}{alt ? ': ' + alt : ''}</NodeViewWrapper>
+  }
+
   if (!isEditable && imageUrl) {
     const viewFrameStyle: React.CSSProperties = { width: imageSize.width, maxWidth: '100%' };
     // On a phone, anything sized like a picture (not an icon or logo) spans the
@@ -222,7 +246,10 @@ function ImageBlockComponent(props: any) {
                   the hover controls below never show there. Desktop keeps them. */}
               <img
                 src={imageUrl}
-                alt=""
+                alt={alt}
+                referrerPolicy={referenceUrl ? 'no-referrer' : undefined}
+                onError={() => setFailedSrc(imageUrl)}
+                loading={referenceUrl ? 'lazy' : undefined}
                 onClick={() => {
                   if (window.matchMedia('(hover: none)').matches) handleExpand()
                 }}
@@ -265,7 +292,9 @@ function ImageBlockComponent(props: any) {
             <div className="w-full flex flex-col items-center justify-center">
               <img
                 src={imageUrl}
-                alt=""
+                alt={alt}
+                referrerPolicy={referenceUrl ? 'no-referrer' : undefined}
+                onError={() => setFailedSrc(imageUrl)}
                 className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-lg"
               />
               {unsplashCredit}
@@ -295,7 +324,7 @@ function ImageBlockComponent(props: any) {
           </div>
 
           {/* Upload Zone - shown when no image */}
-          {!blockObject && !unsplashUrl && isEditable && (
+          {!blockObject && !unsplashUrl && !referenceUrl && !hasOutlineRef && isEditable && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div
                 onClick={() => fileInputRef.current?.click()}
@@ -359,6 +388,41 @@ function ImageBlockComponent(props: any) {
             </div>
           )}
 
+          {isEditable && !blockObject && !unsplashUrl && !hasOutlineRef && (
+            <div className="mt-3 flex flex-wrap items-end gap-2" contentEditable={false}>
+              <label className="flex flex-1 flex-col gap-1 text-sm">
+                {t('editor.blocks.image_block.image_url')}
+                <input
+                  type="url"
+                  value={urlInput ?? httpsImageUrl(props.node.attrs.externalUrl) ?? ''}
+                  onChange={(event) => setUrlInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      saveUrl()
+                    }
+                  }}
+                  className="rounded-md border border-neutral-300 bg-white px-3 py-2"
+                />
+              </label>
+              <button type="button" className="rounded-md border border-neutral-300 px-3 py-2 text-sm" onClick={saveUrl}>
+                {t('editor.blocks.image_block.use_url')}
+              </button>
+            </div>
+          )}
+          {isEditable && (referenceUrl || hasOutlineRef) && (
+            <label className="mt-3 flex flex-col gap-1 text-sm" contentEditable={false}>
+              {t('editor.blocks.image_block.alt_text')}
+              <input
+                value={alt}
+                maxLength={500}
+                onChange={(event) => props.updateAttributes({ alt: event.target.value })}
+                className="rounded-md border border-neutral-300 bg-white px-3 py-2"
+              />
+            </label>
+          )}
+          {hasImageError && <p role="status" className="my-3 text-sm text-red-700">{t('editor.blocks.image_block.load_failed')}</p>}
+
           {/* Error display */}
           {error && (
             <div className="mt-3 flex items-center gap-2 text-sm text-red-500 font-medium bg-red-50 rounded-lg p-3">
@@ -408,8 +472,10 @@ function ImageBlockComponent(props: any) {
               >
                 <div className="relative">
                   <img
-                    src={imageUrl || ''}
-                    alt=""
+                    src={imageUrl}
+                    alt={alt}
+                    referrerPolicy={referenceUrl ? 'no-referrer' : undefined}
+                    onError={() => setFailedSrc(imageUrl)}
                     className="rounded-lg nice-shadow max-w-full h-auto"
                     style={{ width: '100%' }}
                   />
@@ -468,7 +534,9 @@ function ImageBlockComponent(props: any) {
             <div className="w-full flex flex-col items-center justify-center">
               <img
                 src={imageUrl}
-                alt=""
+                alt={alt}
+                referrerPolicy={referenceUrl ? 'no-referrer' : undefined}
+                onError={() => setFailedSrc(imageUrl)}
                 className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-lg"
               />
               {unsplashCredit}

@@ -7365,6 +7365,11 @@
         "apply": "適用"
       },
       "image_block": {
+        "image_url": "画像URL",
+        "use_url": "URLを使う",
+        "https_url_required": "有効なHTTPSの画像URLを入力してください。",
+        "alt_text": "代替テキスト",
+        "load_failed": "画像を読み込めませんでした。",
         "uploading": "画像をアップロード中...",
         "drop_or_browse": "画像をここにドラッグするか、クリックして参照",
         "supported_formats": "JPG、PNG、WebP、GIFをサポート",
