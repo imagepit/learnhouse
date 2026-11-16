@@ -3136,6 +3136,21 @@
         "rights_guide_button": "権利ガイド"
       },
       "settings": {
+        "gradebook": {
+          "learner": "受講者",
+          "download": "CSVをダウンロード",
+          "loading": "成績を読み込んでいます…",
+          "error": "成績を読み込めませんでした。",
+          "empty": "受講登録と課題の追加後に成績表が表示されます。",
+          "status": {
+            "not_submitted": "未提出",
+            "pending": "作業中",
+            "submitted": "採点待ち",
+            "late": "遅延提出・採点待ち",
+            "graded": "採点済み",
+            "ungraded": "提出済み・採点対象外"
+          }
+        },
         "tabs": {
           "general": "一般",
           "content": "コンテンツ",
@@ -3144,7 +3159,8 @@
           "seo": "SEO",
           "certification": "証明書",
           "analytics": "アナリティクス",
-          "schedule": "スケジュール"
+          "schedule": "スケジュール",
+          "gradebook": "成績表"
         },
         "access_denied": {
           "title": "アクセス拒否",

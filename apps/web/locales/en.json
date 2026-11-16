@@ -3163,6 +3163,21 @@
         "rights_guide_button": "Rights Guide"
       },
       "settings": {
+        "gradebook": {
+          "learner": "Learner",
+          "download": "Download CSV",
+          "loading": "Loading grades…",
+          "error": "Could not load grades.",
+          "empty": "Grades appear after learners enroll and assignments are added.",
+          "status": {
+            "not_submitted": "Not submitted",
+            "pending": "In progress",
+            "submitted": "Awaiting grading",
+            "late": "Late · awaiting grading",
+            "graded": "Graded",
+            "ungraded": "Submitted · ungraded"
+          }
+        },
         "tabs": {
           "general": "General",
           "content": "Content",
@@ -3171,7 +3186,8 @@
           "seo": "SEO",
           "certification": "Certification",
           "analytics": "Analytics",
-          "schedule": "Schedule"
+          "schedule": "Schedule",
+          "gradebook": "Gradebook"
         },
         "access_denied": {
           "title": "Access Denied",
