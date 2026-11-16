@@ -23,6 +23,7 @@ const EditCourseContributors = dynamic(() => import('@components/Dashboard/Pages
 const EditCourseCertification = dynamic(() => import('@components/Dashboard/Pages/Course/EditCourseCertification/EditCourseCertification'))
 const EditCourseSEO = dynamic(() => import('@components/Dashboard/Pages/Course/EditCourseSEO/EditCourseSEO'))
 const EditCourseSchedule = dynamic(() => import('@components/Dashboard/Pages/Course/EditCourseSchedule/EditCourseSchedule'))
+const EditCourseGradebook = dynamic(() => import('@components/Dashboard/Pages/Course/EditCourseGradebook/EditCourseGradebook'))
 const CourseAnalyticsTab = dynamic(() => import('@ee/components/Analytics/Dashboard/Course/CourseAnalyticsTab'))
 
 export type CourseOverviewParams = {
@@ -97,6 +98,13 @@ function CourseOverviewPage(props: { params: Promise<CourseOverviewParams> }) {
       href: `/dash/courses/course/${params.courseuuid}/certification`,
       requiredPermission: 'create_certifications' as const,
       requiresPlan: 'pro' as PlanLevel
+    },
+    {
+      key: 'gradebook',
+      label: t('dashboard.courses.settings.tabs.gradebook'),
+      icon: ChartBar,
+      href: `/dash/courses/course/${params.courseuuid}/gradebook`,
+      requiredPermission: 'grade_assignments' as const
     },
     {
       key: 'analytics',
@@ -217,6 +225,10 @@ function CourseOverviewPage(props: { params: Promise<CourseOverviewParams> }) {
                 </FeatureGate>
               </>
             ) : null}
+            {!rightsLoading && params.subpage === 'gradebook' && hasPermission('grade_assignments') ? (
+              <EditCourseGradebook courseUuid={courseuuid} />
+            ) : null}
+
             {!rightsLoading && params.subpage == 'analytics' && hasPermission('update') ? (
               <FeatureGate feature="course_analytics">
                 <CourseAnalyticsTab courseUUID={courseuuid} />
