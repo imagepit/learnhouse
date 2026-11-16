@@ -14,6 +14,9 @@ export default Node.create({
 
   addAttributes() {
     return {
+      externalUrl: { default: null },
+      outlineAttachmentId: { default: null },
+      alt: { default: '' },
       blockObject: {
         default: null,
       },

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from src.routers import admin as admin_router_module
 from src.routers import code_execution
 from src.routers import code_submissions
-from src.routers import health
+from src.routers import health, external_activity_images
 from src.routers import demo as demo_router_module
 from src.routers import instance
 from src.routers import plans
@@ -53,6 +53,7 @@ from src.security.features_utils.plan_check import require_plan, require_plan_fo
 
 
 v1_router = APIRouter(prefix="/api/v1")
+v1_router.include_router(external_activity_images.router)
 
 # Helper dependency to reject API token access (still admits AnonymousUser;
 # use on routers that contain at least one deliberately-public endpoint).

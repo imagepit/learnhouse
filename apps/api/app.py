@@ -28,6 +28,7 @@ from src.core.middleware.bearer_cors import BearerCORSMiddleware, bearer_cors_en
 from src.core.middleware.cors import configure_cors
 from src.security.csrf import CSRFProtectionMiddleware
 from src.router import v1_router
+from src.services.media.outline_images import get_outline_images
 from src.services.ai.llm.errors import is_quota_error
 from src.routers.content_files import router as content_files_router
 from src.routers.local_content import router as local_content_router
@@ -144,6 +145,7 @@ if learnhouse_config.general_config.sentry_config.dsn:
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
+    get_outline_images()
     await startup_app(application)()
     try:
         yield
