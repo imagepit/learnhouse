@@ -1,5 +1,7 @@
 """Read-only course grades for staff with grading access."""
 
+from collections.abc import Collection
+
 from fastapi import HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func
@@ -59,6 +61,13 @@ class CourseGradebook(BaseModel):
 async def get_course_gradebook(
     request: Request, course_uuid: str, current_user: PublicUser, db: AsyncSession
 ) -> CourseGradebook:
+    course = await require_course_gradebook_access(request, course_uuid, current_user, db)
+    return await read_course_gradebook(course, db)
+
+
+async def require_course_gradebook_access(
+    request: Request, course_uuid: str, current_user: PublicUser, db: AsyncSession
+) -> Course:
     if not isinstance(current_user, PublicUser) or current_user.id <= 0:
         raise HTTPException(status_code=403, detail="Grading access required")
 
@@ -67,17 +76,20 @@ async def get_course_gradebook(
     if not rights["permissions"]["grade_assignments"]:
         raise HTTPException(status_code=403, detail="Grading access required")
 
-    course = (await db.exec(select(Course).where(Course.course_uuid == course_uuid))).one()
-    return await read_course_gradebook(course, db)
+    return (await db.exec(select(Course).where(Course.course_uuid == course_uuid))).one()
 
 
-async def read_course_gradebook(course: Course, db: AsyncSession) -> CourseGradebook:
+async def read_course_gradebook(
+    course: Course, db: AsyncSession, *, user_ids: Collection[int] | None = None,
+) -> CourseGradebook:
     members = select(UserOrganization.user_id).where(UserOrganization.org_id == course.org_id)
     enrolled = select(TrailRun.user_id).where(
         TrailRun.course_id == course.id,
         TrailRun.org_id == course.org_id,
         col(TrailRun.user_id).in_(members),
     )
+    if user_ids is not None:
+        enrolled = enrolled.where(col(TrailRun.user_id).in_(user_ids))
     users = (await db.exec(
         select(User.id, User.username)
         .where(col(User.id).in_(enrolled))
