@@ -102,3 +102,42 @@ export function gradebookCSV(rows: readonly (readonly string[])[]): string {
   }).join(',')).join('\r\n')
   return `\uFEFF${csv}\r\n`
 }
+
+type CourseReportCohort = {
+  group_id: number
+  company: string
+  session: string
+}
+
+function isReportCohort(value: unknown): value is CourseReportCohort {
+  return isRecord(value)
+    && typeof value.group_id === 'number'
+    && typeof value.company === 'string'
+    && typeof value.session === 'string'
+}
+
+export async function getCourseReportCohorts(courseUuid: string, token: string) {
+  const response = await fetch(
+    `${getAPIUrl()}courses/${encodeURIComponent(courseUuid)}/gradebook/report-cohorts`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' },
+  )
+  if (!response.ok) throw new Error('Could not load report cohorts')
+  const data: unknown = await response.json()
+  if (!Array.isArray(data) || !data.every(isReportCohort)) throw new Error('Invalid report cohorts')
+  return data
+}
+
+export async function getCourseReportPDF(courseUuid: string, cohort: CourseReportCohort, token: string) {
+  const url = `${getAPIUrl()}courses/${encodeURIComponent(courseUuid)}/gradebook/report.pdf`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(cohort),
+    cache: 'no-store',
+  })
+  if (response.status === 409) return { status: 'cohort-conflict' } as const
+  if (!response.ok || !response.headers.get('Content-Type')?.startsWith('application/pdf')) {
+    throw new Error('Could not download course report')
+  }
+  return { status: 'ready', pdf: await response.blob() } as const
+}

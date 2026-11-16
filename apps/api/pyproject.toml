@@ -52,6 +52,7 @@ dependencies = [
     "regex==2026.9.29",
     "mcp==2.3.0",
     "fakeredis==2.40.0",
+    "fpdf2==2.9.0",
 ]
 
 [tool.ruff]

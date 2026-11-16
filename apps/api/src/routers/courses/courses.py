@@ -4,6 +4,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, Request, Query, BackgroundTasks
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, field_validator
+from starlette.concurrency import run_in_threadpool
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -25,7 +26,17 @@ from src.db.courses.courses import (
 from src.security.auth import get_current_user
 from src.security.features_utils.dependencies import require_courses_feature
 from src.security.rbac import check_resource_access, AccessAction
-from src.services.courses.course_gradebook import CourseGradebook, get_course_gradebook
+from src.services.courses.course_gradebook import (
+    CourseGradebook,
+    get_course_gradebook,
+    require_course_gradebook_access,
+)
+from src.services.courses.course_report import (
+    CourseReportCohort,
+    list_course_report_cohorts,
+    prepare_course_report,
+    render_course_report,
+)
 from src.services.courses.courses import (
     create_course,
     get_course,
@@ -520,6 +531,46 @@ async def api_get_course_gradebook(
     gradebook = await get_course_gradebook(request, course_uuid, current_user, db_session)
     response.headers["Cache-Control"] = "private, no-store"
     return gradebook
+
+
+@router.get("/{course_uuid}/gradebook/report-cohorts", response_model=list[CourseReportCohort])
+async def api_list_course_report_cohorts(
+    request: Request,
+    response: Response,
+    course_uuid: str,
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: AsyncSession = Depends(get_db_session),
+) -> list[CourseReportCohort]:
+    course = await require_course_gradebook_access(request, course_uuid, current_user, db_session)
+    response.headers["Cache-Control"] = "private, no-store"
+    return await list_course_report_cohorts(course, db_session)
+
+
+@router.post(
+    "/{course_uuid}/gradebook/report.pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+async def api_download_course_report(
+    request: Request,
+    course_uuid: str,
+    selection: CourseReportCohort,
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: AsyncSession = Depends(get_db_session),
+) -> Response:
+    course = await require_course_gradebook_access(request, course_uuid, current_user, db_session)
+    report = await prepare_course_report(course, selection, db_session)
+    # Release the read transaction before the CPU-bound font subsetting.
+    await db_session.rollback()
+    content = await run_in_threadpool(render_course_report, report)
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="course-report-{selection.group_id}.pdf"',
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @router.get(
