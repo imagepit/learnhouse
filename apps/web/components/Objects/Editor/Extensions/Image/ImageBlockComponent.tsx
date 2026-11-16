@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { activityImageUrl, httpsImageUrl } from '@services/media/activityImages'
 import AIImageButton from '@components/Objects/AI/AIImageButton'
 
+const OUTLINE_IMAGE_MAX_WIDTH = 600
 const SUPPORTED_FILES = constructAcceptValue(['jpg', 'png', 'webp', 'gif'])
 const UNSPLASH_UTM = '?utm_source=LearnHouse&utm_medium=referral'
 const withUtm = (url?: string | null) => (url ? `${url}${UNSPLASH_UTM}` : '')
@@ -233,10 +234,16 @@ function ImageBlockComponent(props: any) {
   }
 
   if (!isEditable && imageUrl) {
-    const viewFrameStyle: React.CSSProperties = { width: imageSize.width, maxWidth: '100%' };
+    const outlineWidth = Math.min(
+      props.node.attrs.size?.width ?? OUTLINE_IMAGE_MAX_WIDTH,
+      OUTLINE_IMAGE_MAX_WIDTH,
+    )
+    const viewFrameStyle: React.CSSProperties = hasOutlineRef
+      ? { width: 'fit-content', maxWidth: `min(100%, ${outlineWidth}px)` }
+      : { width: imageSize.width, maxWidth: '100%' }
     // On a phone, anything sized like a picture (not an icon or logo) spans the
     // column; a few pixels short of full width just reads as a mistake there.
-    const phoneFullWidth = Number(imageSize.width) >= 240 ? 'max-md:!w-full' : '';
+    const phoneFullWidth = !hasOutlineRef && Number(imageSize.width) >= 240 ? 'max-md:!w-full' : '';
     return (
       <>
         <NodeViewWrapper className="block-image w-full">
@@ -253,7 +260,7 @@ function ImageBlockComponent(props: any) {
                 onClick={() => {
                   if (window.matchMedia('(hover: none)').matches) handleExpand()
                 }}
-                className="rounded-lg max-md:rounded-xl max-w-full h-auto w-full"
+                className={`rounded-lg max-md:rounded-xl max-w-full h-auto ${hasOutlineRef ? "w-auto" : "w-full"}`}
               />
               <div className="absolute top-2 end-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
