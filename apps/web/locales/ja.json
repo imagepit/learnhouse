@@ -3138,7 +3138,9 @@
       "settings": {
         "gradebook": {
           "learner": "受講者",
-          "download": "CSVをダウンロード",
+          "download": "コース全体のCSVをダウンロード",
+          "chapter": "章",
+          "unassigned": "章未設定",
           "loading": "成績を読み込んでいます…",
           "error": "成績を読み込めませんでした。",
           "empty": "受講登録と課題の追加後に成績表が表示されます。",
