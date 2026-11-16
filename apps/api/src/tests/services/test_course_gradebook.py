@@ -1,7 +1,11 @@
 from fastapi import HTTPException
 import pytest
+from sqlmodel import select
 
 from src.db.courses.assignments import AssignmentUserSubmissionStatus
+from src.db.courses.chapter_activities import ChapterActivity
+from src.db.courses.chapters import Chapter
+from src.db.courses.course_chapters import CourseChapter
 from src.db.trail_runs import TrailRun
 from src.db.trails import Trail
 from src.db.users import PublicUser
@@ -50,3 +54,34 @@ async def test_course_gradebook_rejects_learner_and_allows_admin(
         mock_request, course.course_uuid, PublicUser.model_validate(admin_user), db
     )
     assert gradebook.learners == []
+
+async def test_gradebook_uses_current_chapter_in_course_order(db, course, chapter, activity, assignment):
+    earlier_chapter = Chapter(name="New first chapter", org_id=course.org_id, course_id=course.id)
+    db.add(earlier_chapter)
+    await db.flush()
+    db.add(CourseChapter(
+        order=0, chapter_id=earlier_chapter.id, org_id=course.org_id,
+        course_id=course.id, creation_date="", update_date="",
+    ))
+    link = (await db.exec(
+        select(ChapterActivity).where(ChapterActivity.activity_id == activity.id)
+    )).one()
+    link.chapter_id = earlier_chapter.id
+    await db.commit()
+
+    gradebook = await read_course_gradebook(course, db)
+    assert [item.id for item in gradebook.chapters] == [earlier_chapter.id, chapter.id]
+    assert assignment.chapter_id == chapter.id
+    assert gradebook.assignments[0].chapter_id == earlier_chapter.id
+
+
+async def test_gradebook_keeps_assignments_without_a_linked_chapter(db, course, assignment):
+    course_chapter = (await db.exec(
+        select(CourseChapter).where(CourseChapter.course_id == course.id)
+    )).one()
+    await db.delete(course_chapter)
+    await db.commit()
+
+    gradebook = await read_course_gradebook(course, db)
+    assert gradebook.chapters == []
+    assert gradebook.assignments[0].chapter_id is None

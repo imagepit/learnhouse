@@ -3162,7 +3162,9 @@
       "settings": {
         "gradebook": {
           "learner": "Learner",
-          "download": "Download CSV",
+          "download": "Download course CSV",
+          "chapter": "Chapter",
+          "unassigned": "Unassigned chapter",
           "loading": "Loading grades…",
           "error": "Could not load grades.",
           "empty": "Grades appear after learners enroll and assignments are added.",

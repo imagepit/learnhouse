@@ -10,9 +10,15 @@ const submissionStatuses = [
 
 type SubmissionStatus = typeof submissionStatuses[number]
 
+type GradebookChapter = {
+  id: number
+  name: string
+}
+
 type GradebookAssignment = {
   assignment_uuid: string
   title: string
+  chapter_id: number | null
   max_grade: number
   ungraded: boolean
 }
@@ -30,6 +36,7 @@ type GradebookLearner = {
 }
 
 type CourseGradebook = {
+  chapters: GradebookChapter[]
   assignments: GradebookAssignment[]
   learners: GradebookLearner[]
 }
@@ -47,11 +54,18 @@ function isResult(value: unknown): value is GradebookResult {
 
 function isGradebook(value: unknown): value is CourseGradebook {
   return isRecord(value)
+    && Array.isArray(value.chapters)
+    && value.chapters.every((chapter: unknown) =>
+      isRecord(chapter)
+      && typeof chapter.id === 'number'
+      && typeof chapter.name === 'string',
+    )
     && Array.isArray(value.assignments)
     && value.assignments.every((assignment: unknown) =>
       isRecord(assignment)
       && typeof assignment.assignment_uuid === 'string'
       && typeof assignment.title === 'string'
+      && (typeof assignment.chapter_id === 'number' || assignment.chapter_id === null)
       && typeof assignment.max_grade === 'number'
       && typeof assignment.ungraded === 'boolean',
     )

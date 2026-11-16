@@ -13,6 +13,9 @@ from src.db.courses.assignments import (
     AssignmentUserSubmissionStatus,
     GradingTypeEnum,
 )
+from src.db.courses.chapter_activities import ChapterActivity
+from src.db.courses.chapters import Chapter
+from src.db.courses.course_chapters import CourseChapter
 from src.db.courses.courses import Course
 from src.db.trail_runs import TrailRun
 from src.db.user_organizations import UserOrganization
@@ -22,9 +25,15 @@ from src.services.courses.activities.assignments import compute_assignment_grade
 from src.services.courses.courses import get_course_user_rights
 
 
+class GradebookChapter(BaseModel):
+    id: int
+    name: str
+
+
 class GradebookAssignment(BaseModel):
     assignment_uuid: str
     title: str
+    chapter_id: int | None
     max_grade: int
     ungraded: bool
 
@@ -42,6 +51,7 @@ class GradebookLearner(BaseModel):
 
 
 class CourseGradebook(BaseModel):
+    chapters: list[GradebookChapter]
     assignments: list[GradebookAssignment]
     learners: list[GradebookLearner]
 
@@ -84,6 +94,29 @@ async def read_course_gradebook(course: Course, db: AsyncSession) -> CourseGrade
         .order_by(Assignment.id)
     )).all()
     by_id = {assignment.id: assignment for assignment in assignments}
+
+    chapter_rows = (await db.exec(
+        select(Chapter.id, Chapter.name, ChapterActivity.activity_id)
+        .join_from(CourseChapter, Chapter, col(Chapter.id) == col(CourseChapter.chapter_id))
+        .outerjoin(
+            ChapterActivity,
+            (col(ChapterActivity.chapter_id) == col(Chapter.id))
+            & (col(ChapterActivity.course_id) == course.id)
+            & (col(ChapterActivity.org_id) == course.org_id),
+        )
+        .where(
+            CourseChapter.course_id == course.id,
+            CourseChapter.org_id == course.org_id,
+            Chapter.org_id == course.org_id,
+        )
+        .order_by(col(CourseChapter.order), col(Chapter.id))
+    )).all()
+    chapters: dict[int, GradebookChapter] = {}
+    chapter_by_activity: dict[int, int] = {}
+    for chapter_id, name, activity_id in chapter_rows:
+        chapters.setdefault(chapter_id, GradebookChapter(id=chapter_id, name=name))
+        if activity_id is not None:
+            chapter_by_activity.setdefault(activity_id, chapter_id)
 
     maxima = dict((await db.exec(
         select(AssignmentTask.assignment_id, func.sum(AssignmentTask.max_grade_value))
@@ -131,10 +164,15 @@ async def read_course_gradebook(course: Course, db: AsyncSession) -> CourseGrade
         ))
 
     return CourseGradebook(
+        chapters=list(chapters.values()),
         assignments=[
             GradebookAssignment(
                 assignment_uuid=assignment.assignment_uuid,
                 title=assignment.title,
+                chapter_id=chapter_by_activity.get(
+                    assignment.activity_id,
+                    assignment.chapter_id if assignment.chapter_id in chapters else None,
+                ),
                 max_grade=maxima.get(assignment.id) or 0,
                 ungraded=bool(assignment.ungraded),
             )
