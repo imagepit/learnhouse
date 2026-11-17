@@ -23,7 +23,7 @@ test('saves one question at a time, resumes after reload, and grades once at the
     assignmentTitle: 'Ten question quiz',
     autoGrading: true,
     allowRetries: true,
-    maxRetries: 1,
+    maxRetries: 2,
     tasks: [{ title: 'Quiz', assignment_type: 'QUIZ', contents: { questions } }],
   })
   const view = new AssignmentPage(page)
