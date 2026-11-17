@@ -101,8 +101,8 @@ function AssignmentStudentActivity() {
   const solutionUnlocked = !!assignments?.assignment_object?.solution_unlocked;
   const solutionText = (assignments?.assignment_object?.solution || '').trim();
   const solutionFile = assignments?.assignment_object?.solution_file;
-  const solutionRevealsOnSubmission =
-    assignments?.assignment_object?.solution_reveal === 'ON_SUBMISSION';
+  const solutionReveal = assignments?.assignment_object?.solution_reveal;
+  const solutionRevealsOnSubmission = solutionReveal === 'ON_SUBMISSION';
 
   const gradingType = assignments?.assignment_object?.grading_type;
   // Honor the teacher-configured passing threshold; fall back to the
@@ -147,6 +147,7 @@ function AssignmentStudentActivity() {
   }, [dueDateRaw, i18n.language]);
 
   const tasks: any[] = useMemo(() => (assignments ? sortTasksByOrder(assignments?.assignment_tasks) : []), [assignments])
+  const isQuiz = tasks.length > 0 && tasks.every((task) => task.assignment_type === 'QUIZ')
   const totalPoints = tasks.reduce((sum, task) => sum + (Number(task.max_grade_value) || 0), 0)
   const answeredCount = tasks.filter((task) =>
     taskSubmissionHasAnswer(taskSubmissionsMap?.[task.assignment_task_uuid])
@@ -161,6 +162,13 @@ function AssignmentStudentActivity() {
   const submissionStatus = Array.isArray(submission) && submission.length > 0 ? submission[0]?.submission_status : null
   const isSubmitted = submissionStatus === 'SUBMITTED'
   const isAwaitingSubmission = !isSubmitted && !isGraded
+
+  const retriesRemain = !isUngraded && allowRetries && (maxRetries === 0 || currentAttempt < maxRetries)
+  const quizSolutionReady = !retriesRemain && (
+    solutionRevealsOnSubmission
+      ? isSubmitted || isGraded || submissionStatus === 'LATE'
+      : solutionReveal === 'AFTER_GRADING' && isGraded
+  )
 
   // One status for the whole assignment, in the learner's words.
   const status = isGraded
@@ -177,6 +185,38 @@ function AssignmentStudentActivity() {
 
   const progress = tasks.length > 0 ? Math.round((answeredCount / tasks.length) * 100) : 0
   const metaItem = 'flex items-center gap-1.5'
+
+  const solutionPanel = solutionUnlocked && (solutionText || solutionFile) && (
+    <div className='flex flex-col gap-3 rounded-2xl border border-teal-200/70 bg-teal-50/60 p-4 sm:p-5'>
+      <div className='flex items-center gap-2 text-teal-800'>
+        <BookOpenCheck size={16} className='text-teal-600' />
+        <h3 className='text-sm font-semibold'>
+          {isQuiz
+            ? t('assignments.quiz_solution_title', { defaultValue: 'Answers and explanations' })
+            : t('assignments.solution_title', { defaultValue: 'Model answer' })}
+        </h3>
+      </div>
+      {solutionText && (
+        <p className='text-sm leading-relaxed text-neutral-700 whitespace-pre-wrap'>{solutionText}</p>
+      )}
+      {solutionFile && (
+        <Link
+          href={getAssignmentSolutionFileDir(
+            org?.org_uuid,
+            assignments?.course_object.course_uuid,
+            assignments?.activity_object.activity_uuid,
+            assignments?.assignment_object.assignment_uuid,
+            solutionFile
+          )}
+          target='_blank'
+          download={true}
+          className='flex h-10 w-fit items-center gap-2 rounded-xl bg-white px-3.5 text-sm font-semibold text-teal-800 nice-shadow'>
+          <Download size={14} />
+          {t('assignments.solution_download', { defaultValue: 'Download the model answer' })}
+        </Link>
+      )}
+    </div>
+  )
 
   return (
     <div className='flex flex-col gap-4 md:gap-5'>
@@ -297,7 +337,7 @@ function AssignmentStudentActivity() {
       {/* Model answer ("corrigé"). Locked, this is only a promise: the text and
           the document are withheld by the API until the learner hands their
           work in, so there is nothing here to read early. */}
-      {hasSolution && !solutionUnlocked && (
+      {!isQuiz && hasSolution && !solutionUnlocked && (
         <div className='flex items-start gap-3 rounded-2xl bg-neutral-50 p-4 border border-neutral-200/70'>
           <Lock size={16} className='mt-0.5 shrink-0 text-neutral-400' />
           <div className='flex flex-col gap-0.5'>
@@ -313,35 +353,7 @@ function AssignmentStudentActivity() {
         </div>
       )}
 
-      {solutionUnlocked && (solutionText || solutionFile) && (
-        <div className='flex flex-col gap-3 rounded-2xl border border-teal-200/70 bg-teal-50/60 p-4 sm:p-5'>
-          <div className='flex items-center gap-2 text-teal-800'>
-            <BookOpenCheck size={16} className='text-teal-600' />
-            <h3 className='text-sm font-semibold'>
-              {t('assignments.solution_title', { defaultValue: 'Model answer' })}
-            </h3>
-          </div>
-          {solutionText && (
-            <p className='text-sm leading-relaxed text-neutral-700 whitespace-pre-wrap'>{solutionText}</p>
-          )}
-          {solutionFile && (
-            <Link
-              href={getAssignmentSolutionFileDir(
-                org?.org_uuid,
-                assignments?.course_object.course_uuid,
-                assignments?.activity_object.activity_uuid,
-                assignments?.assignment_object.assignment_uuid,
-                solutionFile
-              )}
-              target='_blank'
-              download={true}
-              className='flex h-10 w-fit items-center gap-2 rounded-xl bg-white px-3.5 text-sm font-semibold text-teal-800 nice-shadow'>
-              <Download size={14} />
-              {t('assignments.solution_download', { defaultValue: 'Download the model answer' })}
-            </Link>
-          )}
-        </div>
-      )}
+      {!isQuiz && solutionPanel}
 
       {tasks.map((task: any, index: number) => {
         const taskSubmission = taskSubmissionsMap ? taskSubmissionsMap[task.assignment_task_uuid] : null;
@@ -441,6 +453,8 @@ function AssignmentStudentActivity() {
           </section>
         )
       })}
+
+      {isQuiz && quizSolutionReady && solutionPanel}
 
       {/* Where the work ends: hand it in, or see where it stands. The button
           opens the same confirmation as the activity bar's submit control. */}

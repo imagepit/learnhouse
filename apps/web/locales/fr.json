@@ -2254,6 +2254,7 @@
     "hand_in_confirm": "Votre travail sera transmis à votre formateur. Il n'est pas noté.",
     "handed_in": "Déposé",
     "solution_title": "Corrigé",
+    "quiz_solution_title": "Réponses et explications",
     "solution_download": "Télécharger le corrigé",
     "solution_locked_title": "Corrigé verrouillé",
     "solution_locked_on_submission": "Déposez votre travail et le corrigé se débloque aussitôt.",

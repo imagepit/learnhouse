@@ -2222,6 +2222,7 @@
     "hand_in_confirm": "Your work will be handed in to your teacher. It is not graded.",
     "handed_in": "Handed in",
     "solution_title": "Model answer",
+    "quiz_solution_title": "Answers and explanations",
     "solution_download": "Download the model answer",
     "solution_locked_title": "Model answer locked",
     "solution_locked_on_submission": "Hand your work in and the model answer unlocks right away.",
