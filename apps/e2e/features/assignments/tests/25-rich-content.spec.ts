@@ -148,7 +148,7 @@ test('teacher previews and saves a page exercise that a learner can read', async
   const admin = await browser.newContext({ storageState: ADMIN_STATE })
   try {
     const teacher = await admin.newPage()
-    await teacher.goto(`${BASE_URL}/editor/course/${s.bareCourseUuid}/activity/${activityId}/edit`)
+    await teacher.goto(`${BASE_URL}/course/${s.bareCourseUuid}/activity/${activityId}/edit`)
     const field = teacher.getByRole('textbox', { name: 'Markdown', exact: true })
     await field.fill(content + '\n\nThe exercise was updated.')
     await teacher.getByRole('button', { name: 'Preview', exact: true }).click()
