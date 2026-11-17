@@ -34,6 +34,7 @@ test('saves one question at a time, resumes after reload, and grades once at the
   await expect(position(1)).toBeVisible()
   await expect(page.getByText('Sequential prompt 2', { exact: true })).toHaveCount(0)
   await expect(next).toBeDisabled()
+  await next.scrollIntoViewIfNeeded()
   await info.attach('desktop-question', { body: await page.screenshot(), contentType: 'image/png' })
 
   const submitPath = `**/assignments/${s.seeded.assignmentUuid}/submissions`
@@ -60,6 +61,7 @@ test('saves one question at a time, resumes after reload, and grades once at the
   await page.setViewportSize({ width: 390, height: 844 })
   await page.reload()
   await expect(position(2)).toBeVisible()
+  await next.scrollIntoViewIfNeeded()
   await info.attach('mobile-resumed-question', { body: await page.screenshot(), contentType: 'image/png' })
   await view.answerQuiz('A')
   await view.answerQuiz('B')

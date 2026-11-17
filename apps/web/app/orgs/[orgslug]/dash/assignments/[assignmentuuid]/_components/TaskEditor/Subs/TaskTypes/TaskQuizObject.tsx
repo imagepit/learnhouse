@@ -694,9 +694,13 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded, sequentia
                                 ? t('assignments.quiz.question_position', { current: questionIndex + 1, total: questions.length })
                                 : t('assignments.quiz.all_answers_saved')}
                         </h3>
-                        <progress className="h-2 w-full accent-teal-600" max={questions.length}
-                            value={Math.min(questionIndex + 1, questions.length)}
-                            aria-label={t('assignments.quiz.question_position', { current: Math.min(questionIndex + 1, questions.length), total: questions.length })} />
+                        <div className="h-2 overflow-hidden rounded-full bg-neutral-100"
+                            role="progressbar" aria-valuemin={0} aria-valuemax={questions.length}
+                            aria-valuenow={Math.min(questionIndex + 1, questions.length)}
+                            aria-label={t('assignments.quiz.question_position', { current: Math.min(questionIndex + 1, questions.length), total: questions.length })}>
+                            <div className="h-full rounded-full bg-teal-600"
+                                style={{ width: `${Math.min(questionIndex + 1, questions.length) / questions.length * 100}%` }} />
+                        </div>
                     </div>
                 )}
                 {view === 'teacher' && (
