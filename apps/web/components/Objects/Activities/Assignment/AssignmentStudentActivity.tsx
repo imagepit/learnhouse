@@ -1,3 +1,4 @@
+import RichMarkdown from '@components/Objects/RichMarkdown/RichMarkdown'
 import { useAssignments } from '@components/Contexts/Assignments/AssignmentContext';
 import { useAssignmentSubmission, useAssignmentTaskSubmissions } from '@components/Contexts/Assignments/AssignmentSubmissionContext';
 import { useCourse } from '@components/Contexts/CourseContext';
@@ -99,7 +100,9 @@ function AssignmentStudentActivity() {
   // once the server has actually unlocked them for this learner.
   const hasSolution = !!assignments?.assignment_object?.has_solution;
   const solutionUnlocked = !!assignments?.assignment_object?.solution_unlocked;
-  const solutionText = (assignments?.assignment_object?.solution || '').trim();
+  const copyCode = !assignments?.assignment_object?.anti_copy_paste
+  const solutionSource = assignments?.assignment_object?.solution || '';
+  const solutionText = solutionSource.trim();
   const solutionFile = assignments?.assignment_object?.solution_file;
   const solutionReveal = assignments?.assignment_object?.solution_reveal;
   const solutionRevealsOnSubmission = solutionReveal === 'ON_SUBMISSION';
@@ -197,7 +200,8 @@ function AssignmentStudentActivity() {
         </h3>
       </div>
       {solutionText && (
-        <p className='text-sm leading-relaxed text-neutral-700 whitespace-pre-wrap'>{solutionText}</p>
+        <RichMarkdown copyCode={copyCode} source={assignments?.assignment_object?.solution_format === 'markdown' ? solutionSource : solutionText}
+          format={assignments?.assignment_object?.solution_format} />
       )}
       {solutionFile && (
         <Link
@@ -284,7 +288,7 @@ function AssignmentStudentActivity() {
 
         {assignments?.assignment_object?.description && (
           <div className='border-t border-neutral-100 px-4 sm:px-5 py-4'>
-            <p className='text-sm leading-relaxed text-neutral-700 whitespace-pre-wrap'>{assignments.assignment_object.description}</p>
+            <RichMarkdown copyCode={copyCode} source={assignments.assignment_object.description} format={assignments.assignment_object.description_format} />
           </div>
         )}
       </div>
@@ -386,8 +390,11 @@ function AssignmentStudentActivity() {
                   {t('assignments.task')} {index + 1}
                 </p>
                 <h3 id={`task-${task.assignment_task_uuid}`} className='text-base font-semibold leading-snug text-neutral-900 break-words'>
-                  {task.description}
+                  {task.description_format === 'markdown' ? task.title : task.description}
                 </h3>
+                {task.description_format === 'markdown' && (
+                  <RichMarkdown copyCode={copyCode} source={task.description} format="markdown" />
+                )}
                 {(task.hint || task.reference_file) && (
                   <div className='mt-2 flex flex-wrap gap-2'>
                     {task.hint && (

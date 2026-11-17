@@ -2608,3 +2608,47 @@
   outline: 2px solid rgb(0 0 0 / 0.65);
   outline-offset: 3px;
 }
+
+.lh-rich-markdown {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lh-rich-markdown :is(p, ul, ol, figure, blockquote, table) { margin-block: .5em; }
+.lh-rich-markdown :is(ul, ol) { padding-inline-start: 1.5em; }
+.lh-rich-markdown ul { list-style: disc; }
+.lh-rich-markdown ol { list-style: decimal; }
+.lh-rich-markdown a { text-decoration: underline; }
+.lh-rich-markdown :is(h1, h2, h3, h4, h5, h6) { font-weight: 700; }
+.lh-rich-markdown :is(.lh-rich-callout, .lh-rich-step, .lh-rich-file-tree, .lh-rich-code) {
+  border: 1px solid var(--color-slate-200);
+  border-radius: .5rem;
+  padding: .65rem .9rem;
+}
+.lh-rich-markdown .lh-rich-callout { background: var(--color-sky-50); }
+.lh-rich-markdown :is(.lh-rich-callout-warning, .lh-rich-callout-caution) { background: var(--color-amber-50); }
+.lh-rich-markdown .lh-rich-callout-danger { background: var(--color-red-50); }
+.lh-rich-markdown .lh-rich-step + .lh-rich-step { margin-block-start: .5rem; }
+.lh-rich-markdown .lh-rich-step-body { display: flex; gap: 1rem; flex-wrap: wrap; }
+.lh-rich-markdown .lh-rich-step-body > div { flex: 1 1 14rem; min-width: 0; }
+.lh-rich-markdown .lh-rich-file-tree { background: var(--color-slate-50); }
+.lh-rich-markdown .lh-rich-file-tree ul { list-style: none; font-family: var(--font-mono); }
+.lh-rich-markdown .lh-rich-file-tree li[data-status="added"] { color: var(--color-green-800); }
+.lh-rich-markdown .lh-rich-file-tree li[data-status="removed"] { color: var(--color-red-800); }
+.lh-rich-markdown :is(.lh-rich-code .line--highlight, [data-highlighted="true"]) { background: var(--color-amber-100); }
+.lh-rich-markdown .lh-rich-code {
+  --shiki-foreground: var(--color-slate-900);
+  --shiki-background: var(--color-slate-50);
+  --shiki-token-constant: var(--color-violet-700);
+  --shiki-token-string: var(--color-green-800);
+  --shiki-token-comment: var(--color-slate-600);
+  --shiki-token-keyword: var(--color-blue-800);
+  --shiki-token-function: var(--color-indigo-700);
+}
+.lh-rich-markdown :is(.lh-rich-code pre, .lh-rich-diagram pre) { overflow: auto; }
+.lh-rich-markdown .code-line-group { display: block; }
+.lh-rich-markdown :is(.lh-rich-note, .line-callout, .line-turn-callout) {
+  color: var(--color-blue-800);
+  margin-inline-start: .45em;
+}
+.lh-rich-markdown .lh-rich-code svg { display: inline-block; height: 1em; width: 1em; }
+.lh-rich-markdown .lh-rich-diagram svg { max-width: 100%; height: auto; }

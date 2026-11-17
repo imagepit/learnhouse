@@ -1,4 +1,6 @@
 'use client';
+import RichMarkdownField from '@components/Objects/RichMarkdown/RichMarkdownField'
+import { textFormat } from '@components/Objects/RichMarkdown/RichMarkdown'
 import { useAssignments } from '@components/Contexts/Assignments/AssignmentContext';
 import { useAssignmentsTask, useAssignmentsTaskDispatch } from '@components/Contexts/Assignments/AssignmentsTaskContext';
 import { useLHSession } from '@components/Contexts/LHSessionContext';
@@ -35,6 +37,7 @@ export function AssignmentTaskGeneralEdit() {
         initialValues: {
             title: assignmentTaskState.assignmentTask.title,
             description: assignmentTaskState.assignmentTask.description,
+            description_format: textFormat(assignmentTaskState.assignmentTask.description_format),
             hint: assignmentTaskState.assignmentTask.hint,
             max_grade_value: 100,
         },
@@ -65,16 +68,13 @@ export function AssignmentTaskGeneralEdit() {
                 </Form.Control>
             </FormField>
 
-            <FormField name="description">
-                <FormLabelAndMessage label={t('dashboard.assignments.editor.task_editor.general.description')} message={formik.errors.description} />
-                <Form.Control asChild>
-                    <Input
-                        onChange={formik.handleChange}
-                        value={formik.values.description}
-                        type="text"
-                    />
-                </Form.Control>
-            </FormField>
+            <RichMarkdownField
+                label={t('dashboard.assignments.editor.task_editor.general.description')}
+                value={formik.values.description}
+                format={formik.values.description_format}
+                onChange={(value) => formik.setFieldValue('description', value)}
+                onFormatChange={(format) => formik.setFieldValue('description_format', format)}
+            />
 
             <FormField name="hint">
                 <FormLabelAndMessage label={t('dashboard.assignments.editor.task_editor.general.hint')} message={formik.errors.hint} />

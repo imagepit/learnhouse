@@ -213,3 +213,22 @@ async def test_course_assignment_list_skips_assignments_without_an_activity(
 
     learner = await get_assignments_from_course(mock_request, course.course_uuid, regular_user, db)
     assert [a.assignment_uuid for a in learner] == ["assignment_live"]
+
+
+def test_locked_assignment_excludes_markdown_format():
+    from src.db.courses.assignments import AssignmentRead, GradingTypeEnum
+    from src.services.courses.activities.assignments import _apply_solution_visibility
+
+    assignment = Assignment(
+        title="Quiz", description="Question", description_format="markdown",
+        grading_type=GradingTypeEnum.PERCENTAGE,
+        solution=":::note Secret", solution_format="markdown", assignment_uuid="assignment_rich",
+        id=1, org_id=1, course_id=1, chapter_id=1, activity_id=1,
+    )
+    for unlocked in (False, True):
+        result = _apply_solution_visibility(
+            AssignmentRead.model_validate(assignment), assignment, unlocked=unlocked
+        )
+        assert result.description_format == "markdown"
+        assert result.solution_format == ("markdown" if unlocked else None)
+        assert result.solution == (":::note Secret" if unlocked else None)

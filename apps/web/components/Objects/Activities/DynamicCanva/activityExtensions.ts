@@ -13,6 +13,7 @@ import MathEquationBlock from '@components/Objects/Editor/Extensions/MathEquatio
 import PDFBlock from '@components/Objects/Editor/Extensions/PDF/PDFBlock'
 import H5PBlock from '@components/Objects/Editor/Extensions/H5P/H5PBlock'
 import LibraryBlock from '@components/Objects/Editor/Extensions/Library/LibraryBlock'
+import RichMarkdownBlock from '@components/Objects/Editor/Extensions/RichMarkdown/RichMarkdownBlock'
 import QuizBlock from '@components/Objects/Editor/Extensions/Quiz/QuizBlock'
 import MagicBlock from '@components/Objects/Editor/Extensions/MagicBlocks/MagicBlock'
 // Lowlight with a slim grammar set; see editorLowlight.ts
@@ -109,6 +110,7 @@ export function getActivityExtensions(props: ActivityExtensionOptions): Extensio
       editable: isEditable,
       activity: props.activity,
     }),
+    RichMarkdownBlock,
     QuizBlock.configure({
       editable: isEditable,
       activity: props.activity,

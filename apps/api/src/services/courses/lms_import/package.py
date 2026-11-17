@@ -676,6 +676,7 @@ class PackageWriter:
         return written + 1
 
     def _write_assignment(self, act: _Activity, assignment: dict, tasks: list) -> None:
+        assignment = {"description_format": "plain", "solution_format": "plain", **assignment}
         a_key = self.ids("assignment")
         out_tasks = []
         for index, task in enumerate(tasks):
@@ -687,6 +688,7 @@ class PackageWriter:
                 "assignment_task_uuid": t_key,
                 "title": task.title[:500] or f"Task {index + 1}",
                 "description": task.description,
+                "description_format": "plain",
                 "hint": task.hint,
                 "reference_file": reference_file,
                 "assignment_type": task.assignment_type,

@@ -296,6 +296,19 @@ export const slashCommands: SlashCommandItem[] = [
     requiredPlan: 'standard',
   },
   {
+    id: 'rich-markdown',
+    title: 'Markdown',
+    description: 'Add callouts, steps, file trees, diagrams and annotated code',
+    titleKey: 'Markdown',
+    descriptionKey: 'Add callouts, steps, file trees, diagrams and annotated code',
+    icon: <FileText size={18} />,
+    category: 'text',
+    keywords: ['markdown', 'mermaid', 'file-tree', 'steps', 'callout'],
+    command: (editor) => {
+      editor.chain().focus().insertContent({ type: 'blockRichMarkdown' }).run()
+    },
+  },
+  {
     id: 'quiz',
     title: 'Quiz',
     description: 'Add an interactive quiz',

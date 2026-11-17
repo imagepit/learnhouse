@@ -36,6 +36,7 @@ import MathEquationBlock from './Extensions/MathEquation/MathEquationBlock'
 import PDFBlock from './Extensions/PDF/PDFBlock'
 import H5PBlock from './Extensions/H5P/H5PBlock'
 import LibraryBlock from './Extensions/Library/LibraryBlock'
+import RichMarkdownBlock from '@components/Objects/Editor/Extensions/RichMarkdown/RichMarkdownBlock'
 import QuizBlock from './Extensions/Quiz/QuizBlock'
 import { Table } from '@tiptap/extension-table'
 import TableCell from '@tiptap/extension-table-cell'
@@ -208,6 +209,7 @@ function Editor(props: EditorProps) {
       PDFBlock.configure({ editable: true, activity: stableActivity }),
       H5PBlock.configure({ editable: true, activity: stableActivity }),
       LibraryBlock.configure({ editable: true, activity: stableActivity }),
+      RichMarkdownBlock,
       QuizBlock.configure({ editable: true, activity: stableActivity }),
       Youtube.configure({ controls: true, modestBranding: true }),
       CodeBlockLowlight.configure({ lowlight }),

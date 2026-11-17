@@ -1,5 +1,6 @@
 'use client'
 
+import RichMarkdown from '@components/Objects/RichMarkdown/RichMarkdown'
 import React, { useEffect, useMemo, useState } from 'react'
 import ReactMarkdown, { Components as MarkdownComponents } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -12,6 +13,7 @@ import { useLHSession } from '@components/Contexts/LHSessionContext'
 import { useOrg } from '@components/Contexts/OrgContext'
 import { useCourse } from '@components/Contexts/CourseContext'
 import { getActivity } from '@services/courses/activities'
+import { getAssignmentFromActivityUUID } from '@services/courses/assignments'
 import { getActivityBlockMediaDirectory } from '@services/media/media'
 import { activityImageUrl } from '@services/media/activityImages'
 import { Loader2 } from 'lucide-react'
@@ -159,6 +161,8 @@ function PMNode({ node, ctx }: { node: any; ctx: RendererCtx }): React.ReactElem
           {renderChildren(node.content, ctx)}
         </blockquote>
       )
+    case 'blockRichMarkdown':
+      return <RichMarkdown source={typeof node.attrs?.source === 'string' ? node.attrs.source : ''} format="markdown" />
     case 'codeBlock':
       return (
         <pre className="my-2 p-2 rounded-md bg-gray-50 border border-gray-100 text-[11px] font-mono text-gray-800 overflow-x-auto whitespace-pre-wrap">
@@ -474,6 +478,9 @@ function PreviewBody({ activity }: { activity: any }) {
   if (type === 'TYPE_ASSIGNMENT') {
     const description: string = content.description || activity.description || ''
     if (!description) return <EmptyState text={t('activities.preview.assignment_open')} />
+    if (content.description_format === 'markdown') {
+      return <RichMarkdown source={description} format="markdown" />
+    }
     return (
       <div className="text-xs text-gray-700 leading-relaxed">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
@@ -546,8 +553,28 @@ export default function ActivityPreview({
     }
   }, [autoFetch, hasInlineContent, fetched, loading, activity?.activity_uuid, accessToken])
 
+  const assignmentUuid = activity?.activity_type === 'TYPE_ASSIGNMENT' ? activity.activity_uuid : undefined
+  const [assignmentPreview, setAssignmentPreview] = useState<{
+    activityUuid: string; description: string; format: unknown
+  } | null>(null)
+  useEffect(() => {
+    if (!autoFetch || hasInlineContent || !assignmentUuid || !accessToken) return
+    let current = true
+    getAssignmentFromActivityUUID(assignmentUuid, accessToken).then((result) => {
+      const description = result.data?.description
+      if (current && result.success && typeof description === 'string') {
+        setAssignmentPreview({ activityUuid: assignmentUuid, description, format: result.data.description_format })
+      }
+    }).catch(() => {})
+    return () => { current = false }
+  }, [autoFetch, hasInlineContent, assignmentUuid, accessToken])
+
   // The caller's `activity` always wins so a draft passed in stays visible.
-  const display = hasInlineContent ? activity : fetched
+  const savedAssignment = autoFetch && assignmentPreview?.activityUuid === assignmentUuid ? assignmentPreview : null
+  const display = hasInlineContent ? activity : savedAssignment ? {
+    ...activity,
+    content: { description: savedAssignment.description, description_format: savedAssignment.format },
+  } : fetched
 
   return (
     <div className={className}>

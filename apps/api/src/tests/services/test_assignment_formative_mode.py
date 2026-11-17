@@ -297,6 +297,8 @@ class TestSolutionVisibilityOnRead:
         a = await _make_formative(
             db, org, course, chapter, activity, solution_file="solution_x.pdf"
         )
+        a.solution_format = "markdown"
+        await db.commit()
         with patch(_AUTHZ, new_callable=AsyncMock), patch(
             _ROLES, new_callable=AsyncMock, return_value=False
         ):
@@ -304,6 +306,7 @@ class TestSolutionVisibilityOnRead:
                 mock_request, a.assignment_uuid, regular_user, db
             )
         assert result.solution is None
+        assert result.solution_format is None
         assert result.solution_file is None
         assert result.has_solution is True
         assert result.solution_unlocked is False
@@ -314,6 +317,8 @@ class TestSolutionVisibilityOnRead:
         a = await _make_formative(
             db, org, course, chapter, activity, solution_file="solution_x.pdf"
         )
+        a.solution_format = "markdown"
+        await db.commit()
         await _make_submission(
             db, a, regular_user, AssignmentUserSubmissionStatus.SUBMITTED
         )
@@ -324,6 +329,7 @@ class TestSolutionVisibilityOnRead:
                 mock_request, a.assignment_uuid, regular_user, db
             )
         assert result.solution == SOLUTION_TEXT
+        assert result.solution_format == "markdown"
         assert result.solution_file == "solution_x.pdf"
         assert result.solution_unlocked is True
 

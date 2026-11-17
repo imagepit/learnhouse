@@ -22,6 +22,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.db.courses.activities import Activity, ActivityTypeEnum, ActivitySubTypeEnum
 from src.db.courses.assignments import (
+    ASSIGNMENT_MARKDOWN_LIMIT,
     Assignment,
     AssignmentTask,
     AssignmentTaskTypeEnum,
@@ -1409,16 +1410,22 @@ def _rename_assignment_dirs(new_activity_path: str, plan: _AssignmentPlan) -> No
                 shutil.rmtree(os.path.join(entry_path, "subs"), ignore_errors=True)
 
 
-def _str_field(value, default: str = "", limit: int = 100_000) -> str:
+def _str_field(value, default: str = "", limit: int = ASSIGNMENT_MARKDOWN_LIMIT) -> str:
     return value[:limit] if isinstance(value, str) else default
+
+
+def _text_format(value: object) -> str:
+    return "markdown" if value == "markdown" else "plain"
 
 
 def _assignment_fields(data: dict) -> dict:
     fields: dict = {
         "title": _str_field(data.get("title"), "Assignment", 500) or "Assignment",
         "description": _str_field(data.get("description")),
+        "description_format": _text_format(data.get("description_format")),
         "due_date": data.get("due_date") if isinstance(data.get("due_date"), str) and data.get("due_date") else None,
         "solution": _str_field(data.get("solution")) or None,
+        "solution_format": _text_format(data.get("solution_format")),
     }
     for key in _ASSIGNMENT_BOOL_FIELDS:
         fields[key] = bool(data.get(key, False))
@@ -1481,6 +1488,13 @@ async def _import_assignment(
         except ValueError:
             continue
         contents = task.get("contents") if isinstance(task.get("contents"), dict) else {}
+        questions = contents.get("questions")
+        if isinstance(questions, list):
+            for question in questions:
+                if isinstance(question, dict) and "questionTextFormat" in question:
+                    question["questionTextFormat"] = _text_format(question["questionTextFormat"])
+                    if question["questionTextFormat"] == "markdown":
+                        question["questionText"] = _str_field(question.get("questionText"))
         max_grade = task.get("max_grade_value", 100)
         if not isinstance(max_grade, int) or max_grade < 0:
             max_grade = 100
@@ -1500,6 +1514,7 @@ async def _import_assignment(
         db_session.add(AssignmentTask(
             title=_str_field(task.get("title"), "Task", 500) or "Task",
             description=_str_field(task.get("description")),
+            description_format=_text_format(task.get("description_format")),
             hint=_str_field(task.get("hint")),
             reference_file=reference_file,
             assignment_type=task_type,
