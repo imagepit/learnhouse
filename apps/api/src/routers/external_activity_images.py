@@ -1,3 +1,8 @@
+import logging
+import os
+from pathlib import Path
+from time import perf_counter
+
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -9,6 +14,7 @@ from src.security.auth import get_current_user
 from src.services.courses.activities.access import verify_activity_reader_access_by_uuid
 from src.services.media.outline_images import CACHE_CONTROL, ImageRef, get_outline_images
 
+logger = logging.getLogger("uvicorn.error")
 router = APIRouter()
 _HEADERS = {"Cache-Control": CACHE_CONTROL}
 
@@ -25,6 +31,14 @@ async def redirect_outline_image(
         ref = ImageRef(course_uuid, activity_uuid, attachment_id)
     except ValueError:
         raise HTTPException(404, "Image not found", headers=_HEADERS) from None
+
+    catalog_path = os.environ.get("LEARNHOUSE_OUTLINE_IMAGE_CATALOG")
+    if catalog_path and Path(catalog_path).with_name("measure-db-checkout").is_file():
+        started = perf_counter()
+        try:
+            await db.connection()
+        finally:
+            logger.info("outline_image_db_checkout_ms=%.3f", (perf_counter() - started) * 1000)
 
     try:
         user = await get_current_user(request, db)
