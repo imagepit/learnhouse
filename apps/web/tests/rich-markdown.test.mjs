@@ -44,3 +44,14 @@ test('Pele renders Mermaid graph placeholders and keeps separate SVG IDs', () =>
   expect(render(source, { idPrefix: 'first-', links: false }).svg).toContain('&lt;course-id&gt;')
   expect(render(source, { idPrefix: 'second-', links: false }).svg).not.toContain('first-')
 })
+
+test('keeps an authenticated Outline image inside its step with the original size limit', () => {
+  const src = '/api/v1/courses/course_37ba374f-33fc-47ad-a6ce-dd68267c2c45/activities/activity_6777435b-e27e-4c24-b810-d8a78e0a69b8/outline-images/65feaeab-9dc6-4e19-ac4b-bcb721c5ca33'
+  const source = [':::step', '1. フォルダーを作る', '', `   ![フォルダーの作成](${src})`, ':::'].join('\n')
+  const html = renderToStaticMarkup(createElement(RichMarkdown, { source, format: 'markdown' }))
+  expect(html).toContain('ui-step__body')
+  expect(html).toContain(`src="${src}"`)
+  expect(html).toContain('loading="lazy"')
+  expect(html).toContain('max-width:min(100%, 600px)')
+  expect(html).toContain('type="button"')
+})
