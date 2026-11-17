@@ -1,4 +1,7 @@
 import { useMemo } from 'react'
+import type { JSONContent } from '@tiptap/core'
+import LessonSectionReader from './LessonSectionReader'
+import { splitLessonSections } from './lessonSections'
 import { useEditor, EditorContent } from '@tiptap/react'
 
 import EditorOptionsProvider from '@components/Contexts/Editor/EditorContext'
@@ -7,7 +10,8 @@ import { getActivityExtensions, normalizeActivityContent } from './activityExten
 import AICanvaToolkit from './AI/AICanvaToolkit'
 
 interface Editor {
-  content: string
+  content: string | JSONContent
+  sectionReader?: boolean
   activity: any
   hideTableOfContents?: boolean
   // Passed by the activity/embed/board renderers so the video block can build
@@ -16,15 +20,25 @@ interface Editor {
   orgUuid?: string
 }
 
-function Canva(props: Editor) {
+export default function Canva(props: Editor) {
+  const document = useMemo(() => normalizeActivityContent(props.content), [props.content])
+  const sections = useMemo(() => props.sectionReader ? splitLessonSections(document) : [], [document, props.sectionReader])
+
+  if (sections.length) {
+    return <LessonSectionReader sections={sections} renderSection={section => (
+      <CanvaBody key={section.id} {...props} content={section.content} hideTableOfContents />
+    )} />
+  }
+  return <CanvaBody {...props} content={document} />
+}
+
+function CanvaBody(props: Editor) {
   /**
    * Important Note : This is a workaround to enable user interaction features to be implemented easily, like text selection, AI features and other planned features, this is set to true but otherwise it should be set to false.
    * Another workaround is implemented below to disable the editor from being edited by the user by setting the caret-color to transparent and using a custom extension to filter out transactions that add/edit/remove text.
    * To let the various Custom Extensions know that the editor is not editable, React context (EditorOptionsProvider) will be used instead of props.extension.options.editable.
    */
   const isEditable = true
-
-  const normalizedContent = useMemo(() => normalizeActivityContent(props.content), [props.content])
 
   const editor: any = useEditor({
     immediatelyRender: false,
@@ -42,7 +56,7 @@ function Canva(props: Editor) {
     },
     extensions: getActivityExtensions(props),
 
-    content: normalizedContent,
+    content: props.content,
   })
 
   return (
@@ -57,5 +71,3 @@ function Canva(props: Editor) {
     </EditorOptionsProvider>
   )
 }
-
-export default Canva

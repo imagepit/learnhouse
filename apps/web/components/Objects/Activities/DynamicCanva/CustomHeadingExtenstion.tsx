@@ -2,6 +2,12 @@ import Heading from '@tiptap/extension-heading'
 
 // Custom Heading extension that adds IDs
 export const CustomHeading = Heading.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      readerId: { default: null, rendered: false },
+    }
+  },
   renderHTML({ node, HTMLAttributes }: { node: any; HTMLAttributes: any }) {
     const hasLevel = this.options.levels.includes(node.attrs.level)
     const level = hasLevel ? node.attrs.level : this.options.levels[0]
@@ -21,7 +27,8 @@ export const CustomHeading = Heading.extend({
       `h${level}`,
       {
         ...HTMLAttributes,
-        id,
+        id: node.attrs.readerId || id,
+        ...(node.attrs.readerId && { tabindex: -1, contenteditable: 'false' }),
       },
       0,
     ]

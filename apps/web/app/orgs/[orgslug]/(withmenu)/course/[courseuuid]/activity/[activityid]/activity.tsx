@@ -343,7 +343,8 @@ function ActivityClient(props: ActivityClientProps) {
         }
         return (
           <Suspense fallback={<LoadingFallback />}>
-            <Canva content={activity.content} activity={activity} courseUuid={course?.course_uuid} orgUuid={org?.org_uuid} />
+            <Canva content={activity.content} activity={activity} courseUuid={course?.course_uuid} orgUuid={org?.org_uuid}
+              sectionReader={activity.activity_sub_type === 'SUBTYPE_DYNAMIC_PAGE' && activity.extra_metadata?.reader_layout === 'sections'} />
           </Suspense>
         );
       case 'TYPE_VIDEO':
