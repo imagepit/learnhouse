@@ -2199,6 +2199,7 @@
     "hand_in_confirm": "あなたの提出物が講師に提出されます。採点は行われません。",
     "handed_in": "提出済み",
     "solution_title": "模範解答",
+    "quiz_solution_title": "正解と解説",
     "solution_download": "模範解答をダウンロード",
     "solution_locked_title": "模範解答はロックされています",
     "solution_locked_on_submission": "提出すると、すぐに模範解答が表示されます。",
