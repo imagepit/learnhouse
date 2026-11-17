@@ -1,9 +1,13 @@
 import json
-from typing import Optional, Dict
+from typing import Optional, Dict, Literal
 from pydantic import field_validator
-from sqlalchemy import JSON, Column, ForeignKey, Index, UniqueConstraint
+from sqlalchemy import JSON, Column, ForeignKey, Index, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
 from enum import Enum
+
+
+AssignmentTextFormat = Literal["plain", "markdown"]
+ASSIGNMENT_MARKDOWN_LIMIT = 100_000
 
 
 ## Assignment ##
@@ -38,6 +42,7 @@ class AssignmentBase(SQLModel):
 
     title: str
     description: str
+    description_format: AssignmentTextFormat = Field(default="plain", sa_type=String)
     # Optional on purpose. A deadline makes no sense in a self-paced course,
     # where learners start whenever they enrol, so an assignment may simply not
     # have one. None (and the empty string an HTML date input clears itself to)
@@ -88,6 +93,7 @@ class AssignmentBase(SQLModel):
     # server-side, so the payload never carries the solution to a learner who
     # has not unlocked it.
     solution: Optional[str] = None
+    solution_format: AssignmentTextFormat = Field(default="plain", sa_type=String)
     # Uploaded corrigé document, stored as the on-disk name produced by
     # `upload_solution_file` (same convention as AssignmentTask.reference_file).
     solution_file: Optional[str] = None
@@ -123,6 +129,7 @@ class AssignmentRead(AssignmentBase):
     # whenever a corrigé exists.
     has_solution: Optional[bool] = None
     solution_unlocked: Optional[bool] = None
+    solution_format: Optional[AssignmentTextFormat] = None
 
 
 class AssignmentUpdate(SQLModel):
@@ -139,6 +146,7 @@ class AssignmentUpdate(SQLModel):
 
     title: Optional[str] = None
     description: Optional[str] = None
+    description_format: Optional[AssignmentTextFormat] = None
     due_date: Optional[str] = None
     published: Optional[bool] = None
     grading_type: Optional[GradingTypeEnum] = None
@@ -150,6 +158,7 @@ class AssignmentUpdate(SQLModel):
     pass_threshold_percentage: Optional[float] = None
     ungraded: Optional[bool] = None
     solution: Optional[str] = None
+    solution_format: Optional[AssignmentTextFormat] = None
     solution_reveal: Optional[SolutionRevealEnum] = None
     update_date: Optional[str] = None
 
@@ -205,6 +214,7 @@ class AssignmentTaskBase(SQLModel):
 
     title: str
     description: str
+    description_format: AssignmentTextFormat = Field(default="plain", sa_type=String)
     hint: str
     reference_file: Optional[str] = None
     assignment_type: AssignmentTaskTypeEnum
@@ -245,6 +255,7 @@ class AssignmentTaskUpdate(SQLModel):
 
     title: Optional[str] = None
     description: Optional[str] = None
+    description_format: Optional[AssignmentTextFormat] = None
     hint: Optional[str] = None
     assignment_type: Optional[AssignmentTaskTypeEnum] = None
     contents: Optional[Dict] = Field(default=None, sa_column=Column(JSON))

@@ -1,3 +1,5 @@
+import RichMarkdown, { textFormat, type TextFormat } from '@components/Objects/RichMarkdown/RichMarkdown'
+import RichMarkdownField from '@components/Objects/RichMarkdown/RichMarkdownField'
 import { NodeViewWrapper } from '@tiptap/react'
 import { v4 as uuidv4 } from 'uuid'
 import { cn } from '@/lib/utils'
@@ -34,6 +36,7 @@ interface Answer {
 interface Question {
   question_id: string
   question: string
+  questionFormat?: TextFormat
   // The kind of question. `custom_answer` is legacy and never rendered. HOW
   // MANY answers may be picked is a separate axis, carried by `response_type`
   // (same field name as the graded assignment quiz task).
@@ -205,10 +208,10 @@ function QuizBlockComponent(props: any) {
     saveQuestions(newQuestions)
   }
 
-  const changeQuestionValue = (question_id: string, value: string) => {
+  const changeQuestionValue = (question_id: string, value: string, format: TextFormat) => {
     const newQuestions = questions.map((question: Question) =>
       question.question_id === question_id
-        ? { ...question, question: value }
+        ? { ...question, question: value, questionFormat: format }
         : question
     )
     saveQuestions(newQuestions)
@@ -390,19 +393,16 @@ function QuizBlockComponent(props: any) {
                       {qIndex + 1}
                     </div>
                     {isEditable ? (
-                      <input
+                      <RichMarkdownField
+                        label={t('editor.blocks.quiz_block.question_label', { defaultValue: 'Question' })}
+                        placeholder={t('editor.blocks.quiz_block.question_placeholder')}
                         value={question.question}
-                        placeholder={t(
-                          'editor.blocks.quiz_block.question_placeholder'
-                        )}
-                        onChange={(e) =>
-                          changeQuestionValue(
-                            question.question_id,
-                            e.target.value
-                          )
-                        }
-                        className="w-full text-neutral-800 bg-transparent text-sm font-semibold outline-none placeholder:text-neutral-300"
+                        format={textFormat(question.questionFormat)}
+                        onChange={value => changeQuestionValue(question.question_id, value, textFormat(question.questionFormat))}
+                        onFormatChange={format => changeQuestionValue(question.question_id, question.question, format)}
                       />
+                    ) : question.questionFormat === 'markdown' ? (
+                      <RichMarkdown source={question.question} format="markdown" />
                     ) : (
                       <p className="text-neutral-800 text-sm max-md:text-[15px] font-semibold break-words leading-snug">
                         {question.question || (

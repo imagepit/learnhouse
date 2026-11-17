@@ -1,3 +1,5 @@
+import RichMarkdownField from '@components/Objects/RichMarkdown/RichMarkdownField'
+import { textFormat, type TextFormat } from '@components/Objects/RichMarkdown/RichMarkdown'
 import React from 'react';
 import {
     deleteAssignmentSolutionFile,
@@ -49,6 +51,7 @@ interface Assignment {
     assignment_uuid: string;
     title: string;
     description: string;
+    description_format?: TextFormat;
     due_date?: string;
     grading_type?: GradingType;
     auto_grading?: boolean;
@@ -58,6 +61,7 @@ interface Assignment {
     max_retries?: number;
     pass_threshold_percentage?: number | null;
     ungraded?: boolean;
+    solution_format?: TextFormat | null;
     solution?: string | null;
     solution_file?: string | null;
     solution_reveal?: SolutionReveal;
@@ -170,6 +174,7 @@ const EditAssignmentForm: React.FC<EditAssignmentFormProps> = ({
         initialValues: {
             title: assignment.title || '',
             description: assignment.description || '',
+            description_format: textFormat(assignment.description_format),
             // `<input type="date">` shows nothing for a value carrying a time
             // component, so a stored "2026-01-01T09:00:00" would render as an
             // empty field the teacher reads as "no deadline" and, now that
@@ -195,6 +200,7 @@ const EditAssignmentForm: React.FC<EditAssignmentFormProps> = ({
             // Formative mode: the assignment is handed in but never marked.
             ungraded: assignment.ungraded || false,
             solution: assignment.solution || '',
+            solution_format: textFormat(assignment.solution_format),
             solution_reveal: (assignment.solution_reveal || 'NEVER') as SolutionReveal,
         },
         enableReinitialize: true,
@@ -290,23 +296,15 @@ const EditAssignmentForm: React.FC<EditAssignmentFormProps> = ({
                 </Form.Control>
             </Form.Field>
 
-            <Form.Field name="description" className="space-y-1.5">
-                <Form.Label className={labelClass}>
-                    {t('dashboard.assignments.modals.edit.form.description_label')}
-                </Form.Label>
-                <Form.Message match="valueMissing" className={errorClass}>
-                    {t('dashboard.assignments.modals.edit.form.description_required')}
-                </Form.Message>
-                <Form.Control asChild>
-                    <textarea
-                        onChange={formik.handleChange}
-                        value={formik.values.description}
-                        required
-                        rows={3}
-                        className={textareaClass}
-                    />
-                </Form.Control>
-            </Form.Field>
+            <RichMarkdownField
+                label={t('dashboard.assignments.modals.edit.form.description_label')}
+                value={formik.values.description}
+                format={formik.values.description_format}
+                onChange={(value) => formik.setFieldValue('description', value)}
+                onFormatChange={(format) => formik.setFieldValue('description_format', format)}
+                className={textareaClass}
+                required
+            />
 
             {/* Optional: a self-paced course has no date that means anything to
                 a learner who enrolled today. */}
@@ -475,6 +473,8 @@ const EditAssignmentForm: React.FC<EditAssignmentFormProps> = ({
             <SolutionSection
                 ungraded={formik.values.ungraded}
                 solution={formik.values.solution}
+                format={formik.values.solution_format}
+                onFormatChange={(format) => formik.setFieldValue('solution_format', format)}
                 onSolutionChange={(v) => formik.setFieldValue('solution', v, true)}
                 reveal={formik.values.solution_reveal}
                 onRevealChange={(v) => formik.setFieldValue('solution_reveal', v, true)}
@@ -592,6 +592,8 @@ function SolutionSection({
     ungraded,
     solution,
     onSolutionChange,
+    format,
+    onFormatChange,
     reveal,
     onRevealChange,
     currentFileName,
@@ -601,6 +603,8 @@ function SolutionSection({
 }: {
     ungraded: boolean;
     solution: string;
+    format: TextFormat;
+    onFormatChange: (format: TextFormat) => void;
     onSolutionChange: (_v: string) => void;
     reveal: SolutionReveal;
     onRevealChange: (_v: SolutionReveal) => void;
@@ -655,13 +659,15 @@ function SolutionSection({
 
             <div className="rounded-xl border border-gray-100 bg-white nice-shadow overflow-hidden">
                 <div className="p-3 space-y-3">
-                    <textarea
+                    <RichMarkdownField
+                        label={t('dashboard.assignments.modals.edit.form.solution_label', { defaultValue: 'Model answer' })}
                         value={solution}
-                        onChange={(e) => onSolutionChange(e.target.value)}
-                        rows={4}
+                        format={format}
+                        onChange={onSolutionChange}
                         placeholder={t('dashboard.assignments.modals.edit.form.solution_placeholder', {
                             defaultValue: 'Write the worked solution learners should compare their work against…',
                         })}
+                        onFormatChange={onFormatChange}
                         className={textareaClass}
                     />
 

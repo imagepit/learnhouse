@@ -1,3 +1,5 @@
+import RichMarkdown, { textFormat, type TextFormat } from '@components/Objects/RichMarkdown/RichMarkdown'
+import RichMarkdownField from '@components/Objects/RichMarkdown/RichMarkdownField'
 import { useAssignments } from '@components/Contexts/Assignments/AssignmentContext';
 import { useAssignmentSubmission, useAssignmentTaskSubmissions } from '@components/Contexts/Assignments/AssignmentSubmissionContext';
 import { useAssignmentsTask, useAssignmentsTaskDispatch } from '@components/Contexts/Assignments/AssignmentsTaskContext';
@@ -27,6 +29,7 @@ import {
 
 type QuizSchema = {
     questionText: string;
+    questionTextFormat?: TextFormat;
     questionUUID?: string;
     // 'single' = pick one, 'multiple' = select all that apply. Absent on
     // questions authored before the mode existed, so always read it through
@@ -115,6 +118,12 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskQui
     // the pre-existing behaviour, so it stays the default for every task that
     // has no stored value.
     const [gradingMode, setGradingMode] = useState<QuizGradingMode>(QUIZ_GRADING_ALL_OR_NOTHING);
+
+    const handleQuestionFormatChange = (index: number, format: TextFormat) => {
+        setQuestions(current => current.map((question, i) =>
+            i === index ? { ...question, questionTextFormat: format } : question
+        ));
+    };
 
     const handleQuestionChange = (index: number, value: string) => {
         const updatedQuestions = [...questions];
@@ -660,18 +669,23 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskQui
                         <div key={qIndex} className="flex flex-col space-y-1.5">
                             <div className="flex space-x-2 items-center">
                                 {view === 'teacher' ? (
-                                    <input
-                                        value={question.questionText}
-                                        onChange={(e) => handleQuestionChange(qIndex, e.target.value)}
-                                        placeholder={t('dashboard.assignments.editor.task_editor.quiz.question')}
-                                        className="w-full px-3 text-neutral-600 bg-[#00008b00] border-2 border-gray-200 rounded-md border-dotted text-sm font-bold"
-                                    />
-                                ) : view === 'student' ? (
-                                    <p className="w-full text-[15px] font-semibold leading-snug text-neutral-900">
-                                        {question.questionText}
-                                    </p>
+                                    <div className="min-w-0 flex-1">
+                                        <RichMarkdownField
+                                            label={t('dashboard.assignments.editor.task_editor.quiz.question')}
+                                            placeholder={t('dashboard.assignments.editor.task_editor.quiz.question')}
+                                            value={question.questionText}
+                                            format={textFormat(question.questionTextFormat)}
+                                            onChange={value => handleQuestionChange(qIndex, value)}
+                                            onFormatChange={format => handleQuestionFormatChange(qIndex, format)}
+                                        />
+                                    </div>
+                                ) : question.questionTextFormat === 'markdown' ? (
+                                    <div className="min-w-0 flex-1">
+                                        <RichMarkdown source={question.questionText} format="markdown"
+                                            copyCode={view !== 'student' || !assignment?.assignment_object?.anti_copy_paste} />
+                                    </div>
                                 ) : (
-                                    <p className="w-full px-3 text-neutral-600 bg-[#00008b00] border-2 border-gray-200 rounded-md border-dotted text-sm font-bold">
+                                    <p className="w-full text-[15px] font-semibold leading-snug text-neutral-900">
                                         {question.questionText}
                                     </p>
                                 )}

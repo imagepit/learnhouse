@@ -23,6 +23,7 @@ from sqlalchemy.exc import IntegrityError
 from src.db.courses.activities import Activity
 from src.db.courses.chapter_activities import ChapterActivity
 from src.db.courses.assignments import (
+    ASSIGNMENT_MARKDOWN_LIMIT,
     Assignment,
     AssignmentCreate,
     AssignmentRead,
@@ -444,6 +445,7 @@ def _apply_solution_visibility(
     )
     result.solution_unlocked = bool(unlocked)
     if not unlocked:
+        result.solution_format = None
         result.solution = None
         result.solution_file = None
     return result
@@ -1103,6 +1105,28 @@ def compute_assignment_grade(
 ## > Assignments CRUD
 
 
+def _validate_assignment_markdown(text: str | None, text_format: str) -> None:
+    if text_format not in ("plain", "markdown"):
+        raise HTTPException(status_code=422, detail="Unknown assignment text format")
+    if text_format == "markdown" and text is not None and (
+        not isinstance(text, str) or len(text) > ASSIGNMENT_MARKDOWN_LIMIT
+    ):
+        raise HTTPException(status_code=422, detail="Invalid assignment Markdown content")
+
+
+def _validate_question_markdown(contents: dict) -> None:
+    questions = contents.get("questions")
+    if not isinstance(questions, list):
+        return
+    for question in questions:
+        if isinstance(question, dict) and "questionTextFormat" in question:
+            if question["questionTextFormat"] == "markdown" and not isinstance(question.get("questionText"), str):
+                raise HTTPException(status_code=422, detail="Invalid Markdown question text")
+            _validate_assignment_markdown(
+                question.get("questionText"), question["questionTextFormat"]
+            )
+
+
 async def create_assignment(
     request: Request,
     assignment_object: AssignmentCreate,
@@ -1144,6 +1168,8 @@ async def create_assignment(
         )
 
     # Create Assignment
+    _validate_assignment_markdown(assignment_object.description, assignment_object.description_format)
+    _validate_assignment_markdown(assignment_object.solution, assignment_object.solution_format)
     assignment = Assignment(**assignment_object.model_dump())
 
     # Formative mode and auto-grading are contradictory: one says "never produce
@@ -1313,6 +1339,8 @@ async def update_assignment(
             setattr(assignment, var, value)
         elif var in CLEARABLE_FIELDS and var in provided:
             setattr(assignment, var, None)
+    _validate_assignment_markdown(assignment.description, assignment.description_format)
+    _validate_assignment_markdown(assignment.solution, assignment.solution_format)
     # Turning on formative mode turns auto-grading off; see create_assignment.
     if assignment.ungraded:
         assignment.auto_grading = False
@@ -1597,6 +1625,8 @@ async def create_assignment_task(
     await authorize_assignment_access(request, db_session, current_user, course.course_uuid, AccessAction.CREATE)
 
     # Create Assignment Task
+    _validate_assignment_markdown(assignment_task_object.description, assignment_task_object.description_format)
+    _validate_question_markdown(assignment_task_object.contents)
     assignment_task = AssignmentTask(**assignment_task_object.model_dump())
 
     assignment_task.assignment_task_uuid = str(f"assignmenttask_{uuid4()}")
@@ -1962,6 +1992,13 @@ async def update_assignment_task(
         and getattr(assignment_task_object, f) != getattr(assignment_task, f)
         for f in _SCORING_FIELDS
     )
+
+    _validate_assignment_markdown(
+        assignment_task_object.description if assignment_task_object.description is not None else assignment_task.description,
+        assignment_task_object.description_format or assignment_task.description_format,
+    )
+    if assignment_task_object.contents is not None:
+        _validate_question_markdown(assignment_task_object.contents)
 
     # Update only the fields that were passed in
     for var, value in vars(assignment_task_object).items():

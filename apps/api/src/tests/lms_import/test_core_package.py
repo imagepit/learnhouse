@@ -742,6 +742,7 @@ def test_graded_assessment(tmp_path):
         "published": True, "grading_type": "PERCENTAGE", "auto_grading": True, "show_correct_answers": True,
         "allow_retries": True, "max_retries": 3, "pass_threshold_percentage": 60.0, "ungraded": False,
         "solution": "2. Because", "solution_reveal": "AFTER_GRADING",
+        "description_format": "plain", "solution_format": "plain",
     }
     tasks = data["tasks"]
     assert [t["assignment_type"] for t in tasks] == ["QUIZ", "SHORT_ANSWER", "NUMBER_ANSWER", "FORM"]
@@ -1180,3 +1181,16 @@ def test_corrupt_inline_image_is_skipped_not_a_library_item(tmp_path):
     assert report.skipped[0].title.startswith("inline-") and report.skipped[0].title.endswith(".png")
     assert not os.path.isdir(os.path.join(pkg.course_dir, "library"))  # no junk zip in the Library
     assert report.counts.get("media_file", 0) == 0 and report.warnings == []
+
+
+def test_import_assignment_formats_preserve_markdown_and_default_to_plain():
+    from src.services.courses.transfer.import_service import _assignment_fields
+
+    authored = _assignment_fields({
+        "description": ":::note Question", "description_format": "markdown",
+        "solution": ":::tip Answer", "solution_format": "markdown",
+    })
+    assert authored["description_format"] == authored["solution_format"] == "markdown"
+    assert authored["solution"] == ":::tip Answer"
+    assert _assignment_fields({})["description_format"] == "plain"
+    assert _assignment_fields({"solution_format": "unknown"})["solution_format"] == "plain"
