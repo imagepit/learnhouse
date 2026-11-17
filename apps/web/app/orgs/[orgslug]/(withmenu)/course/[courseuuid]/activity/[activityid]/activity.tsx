@@ -316,6 +316,8 @@ function ActivityClient(props: ActivityClientProps) {
   const sectionReader = activity?.activity_sub_type === 'SUBTYPE_DYNAMIC_PAGE' &&
     activity.extra_metadata?.reader_layout === 'sections'
 
+  const chapterLabel = sectionReader && course ? getChapterNameByActivityId(course, activity?.id, true) : null
+
   const activityContent = useMemo(() => {
     if (!activity || !activity.published || activity.content.paid_access === false) {
       return null;
@@ -347,7 +349,7 @@ function ActivityClient(props: ActivityClientProps) {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <Canva content={activity.content} activity={activity} courseUuid={course?.course_uuid} orgUuid={org?.org_uuid}
-              sectionReader={sectionReader} />
+              sectionReader={sectionReader} chapterLabel={chapterLabel ?? undefined} />
           </Suspense>
         );
       case 'TYPE_VIDEO':
@@ -395,7 +397,7 @@ function ActivityClient(props: ActivityClientProps) {
       default:
         return null;
     }
-  }, [sectionReader, activity, course, assignment, orgslug]);
+  }, [sectionReader, chapterLabel, activity, course, assignment, orgslug]);
 
   // Past the last activity lies the course-end screen holding the certificate.
   const isLastActivity = currentIndex >= 0 && !nextActivity;
@@ -512,12 +514,16 @@ function ActivityClient(props: ActivityClientProps) {
     }
   }, [focusModePref]);
 
-  function getChapterNameByActivityId(course: any, activity_id: any) {
+  function getChapterNameByActivityId(course: any, activity_id: any, compact = false) {
     for (let i = 0; i < course.chapters.length; i++) {
       let chapter = course.chapters[i]
       for (let j = 0; j < chapter.activities.length; j++) {
         let activity = chapter.activities[j]
         if (activity.id === activity_id) {
+          if (compact) {
+            const number = i18n.language?.startsWith('ja') ? `第${i + 1}章` : `${t('courses.chapter')} ${i + 1}`
+            return chapter.name ? `${number} · ${chapter.name}` : number
+          }
           return `${t('courses.chapter')} ${i + 1} : ${chapter.name}`
         }
       }
@@ -1216,6 +1222,7 @@ function ActivityClient(props: ActivityClientProps) {
                       {activity && activity.published == true && activity.content.paid_access != false && (
                         <FixedActivitySecondaryBar
                           sectionReader={sectionReader}
+                          chapterLabel={chapterLabel ?? undefined}
                           course={course}
                           currentActivityId={activityid}
                           orgslug={orgslug}

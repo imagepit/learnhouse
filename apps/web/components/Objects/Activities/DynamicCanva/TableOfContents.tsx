@@ -80,8 +80,9 @@ export default TableOfContents
 
 // Based on the IMAGEPIT design-system Toc. This reader scopes observation to
 // its active section and tracks the last heading above the fixed page header.
-export function SectionTableOfContents({ sections, current, body, onNavigate }: {
+export function SectionTableOfContents({ sections, chapterLabel, current, body, onNavigate }: {
   sections: LessonSection[]
+  chapterLabel?: string
   current: LessonSection
   body: RefObject<HTMLDivElement | null>
   onNavigate: (event: MouseEvent<HTMLAnchorElement>) => void
@@ -143,7 +144,7 @@ export function SectionTableOfContents({ sections, current, body, onNavigate }: 
   return <aside className="lesson-section-rail">
     <nav aria-label="章の目次" className="lesson-section-toc-desktop">{links()}</nav>
     <details className="lesson-section-toc-mobile">
-      <summary>章の目次</summary>
+      <summary>{chapterLabel ? `${chapterLabel} の目次` : '章の目次'}</summary>
       <nav aria-label="章の目次">{links()}</nav>
     </details>
   </aside>

@@ -12,6 +12,7 @@ import AICanvaToolkit from './AI/AICanvaToolkit'
 interface Editor {
   content: string | JSONContent
   sectionReader?: boolean
+  chapterLabel?: string
   activity: any
   hideTableOfContents?: boolean
   // Passed by the activity/embed/board renderers so the video block can build
@@ -25,7 +26,7 @@ export default function Canva(props: Editor) {
   const sections = useMemo(() => props.sectionReader ? splitLessonSections(document) : [], [document, props.sectionReader])
 
   if (sections.length) {
-    return <LessonSectionReader sections={sections} renderSection={section => (
+    return <LessonSectionReader sections={sections} chapterLabel={props.chapterLabel} renderSection={section => (
       <CanvaBody key={section.id} {...props} content={section.content} hideTableOfContents />
     )} />
   }

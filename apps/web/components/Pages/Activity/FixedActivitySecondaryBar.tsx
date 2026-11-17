@@ -16,6 +16,7 @@ interface FixedActivitySecondaryBarProps {
   /** Dark styling, for pages on the video theater band. */
   dark?: boolean
   sectionReader?: boolean
+  chapterLabel?: string
 }
 
 // Memoized navigation buttons component
@@ -97,7 +98,7 @@ const NavigationButtons = memo(({
 NavigationButtons.displayName = 'NavigationButtons';
 
 // Memoized course info component
-const CourseInfo = memo(({ course, org, dark = false }: { course: any, org: any, dark?: boolean }) => {
+const CourseInfo = memo(({ course, org, chapterLabel, dark = false }: { course: any, org: any, chapterLabel?: string, dark?: boolean }) => {
   const { t } = useTranslation();
   return (
     <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-shrink">
@@ -117,7 +118,8 @@ const CourseInfo = memo(({ course, org, dark = false }: { course: any, org: any,
         alt=""
       />
       <div className="flex flex-col -space-y-0.5 min-w-0 hidden sm:block">
-        <p className={`text-sm font-medium ${dark ? 'text-white/50' : 'text-gray-500'}`}>{t('courses.courses')}</p>
+        <p className={`truncate text-sm font-medium ${dark ? 'text-white/70' : chapterLabel ? 'text-gray-800' : 'text-gray-500'}`}
+          title={chapterLabel}>{chapterLabel ?? t('courses.courses')}</p>
         <h1 className={`font-semibold text-base truncate ${dark ? 'text-white' : 'text-gray-900'}`}>
           {course.name}
         </h1>
@@ -233,7 +235,7 @@ export default function FixedActivitySecondaryBar(props: FixedActivitySecondaryB
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 py-2">
-          <CourseInfo course={props.course} org={org} dark={props.dark} />
+          <CourseInfo course={props.course} org={org} chapterLabel={props.chapterLabel} dark={props.dark} />
           
           <div className="flex items-center flex-shrink-0">
             <NavigationButtons

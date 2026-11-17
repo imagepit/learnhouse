@@ -6,10 +6,11 @@ import { readerHref, resolveReaderLocation, type LessonSection } from './lessonS
 
 interface ReaderProps {
   sections: LessonSection[]
+  chapterLabel?: string
   renderSection: (section: LessonSection) => ReactNode
 }
 
-export default function LessonSectionReader({ sections, renderSection }: ReaderProps) {
+export default function LessonSectionReader({ sections, chapterLabel, renderSection }: ReaderProps) {
   const [hash, setHash] = useState('')
   const [ready, setReady] = useState(false)
   const reader = useRef<HTMLDivElement>(null)
@@ -82,7 +83,7 @@ export default function LessonSectionReader({ sections, renderSection }: ReaderP
   const previous = sections[index - 1]
   const next = sections[index + 1]
   return <div className="lesson-section-reader" ref={reader}>
-    <SectionTableOfContents sections={sections} current={section} body={body} onNavigate={navigate} />
+    <SectionTableOfContents sections={sections} chapterLabel={chapterLabel} current={section} body={body} onNavigate={navigate} />
     <div className="lesson-section-body" ref={body}>
       {renderSection(section)}
       {(previous || next) && <nav className="lesson-section-nav" aria-label="セクション移動">
