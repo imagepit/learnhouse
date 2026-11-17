@@ -29,6 +29,9 @@ export function sanitizeDiagram(raw: string): SVGSVGElement {
       }
     }
   }
+  svg.setAttribute('role', 'img')
+  svg.setAttribute('aria-label', 'Mermaid図')
+  svg.setAttribute('focusable', 'false')
   return svg
 }
 
@@ -50,10 +53,13 @@ export default memo(function PeleDiagram({ source }: { source: string }) {
   }, [source, id])
 
   const svg = result?.source === source && result.svg
-  if (svg) return <figure className="lh-rich-diagram" dangerouslySetInnerHTML={{ __html: svg }} />
   const invalid = source.length > MAX_SOURCE_LENGTH || !source.trim() || result?.source === source
-  return <figure className="lh-rich-diagram">
-    {invalid && <figcaption>Could not render the Mermaid diagram.</figcaption>}
-    <pre><code>{source}</code></pre>
+  return <figure className="lh-rich-diagram ui-mermaid">
+    <div className="ui-mermaid__canvas">
+      {svg
+        ? <div className="ui-mermaid__svg" dangerouslySetInnerHTML={{ __html: svg }} />
+        : <pre className="ui-mermaid__fallback"><code>{source}</code></pre>}
+    </div>
+    {!svg && invalid && <figcaption className="ui-mermaid__error">Mermaid図を表示できませんでした。</figcaption>}
   </figure>
 })
