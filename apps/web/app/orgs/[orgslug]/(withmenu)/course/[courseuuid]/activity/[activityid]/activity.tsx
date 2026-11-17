@@ -313,6 +313,9 @@ function ActivityClient(props: ActivityClientProps) {
   const nextActivity = currentIndex < allActivities.length - 1 ? allActivities[currentIndex + 1] : null;
 
   // Memoize activity content
+  const sectionReader = activity?.activity_sub_type === 'SUBTYPE_DYNAMIC_PAGE' &&
+    activity.extra_metadata?.reader_layout === 'sections'
+
   const activityContent = useMemo(() => {
     if (!activity || !activity.published || activity.content.paid_access === false) {
       return null;
@@ -344,7 +347,7 @@ function ActivityClient(props: ActivityClientProps) {
         return (
           <Suspense fallback={<LoadingFallback />}>
             <Canva content={activity.content} activity={activity} courseUuid={course?.course_uuid} orgUuid={org?.org_uuid}
-              sectionReader={activity.activity_sub_type === 'SUBTYPE_DYNAMIC_PAGE' && activity.extra_metadata?.reader_layout === 'sections'} />
+              sectionReader={sectionReader} />
           </Suspense>
         );
       case 'TYPE_VIDEO':
@@ -392,7 +395,7 @@ function ActivityClient(props: ActivityClientProps) {
       default:
         return null;
     }
-  }, [activity, course, assignment, orgslug]);
+  }, [sectionReader, activity, course, assignment, orgslug]);
 
   // Past the last activity lies the course-end screen holding the certificate.
   const isLastActivity = currentIndex >= 0 && !nextActivity;
@@ -1212,6 +1215,7 @@ function ActivityClient(props: ActivityClientProps) {
                       {/* Fixed Activity Secondary Bar */}
                       {activity && activity.published == true && activity.content.paid_access != false && (
                         <FixedActivitySecondaryBar
+                          sectionReader={sectionReader}
                           course={course}
                           currentActivityId={activityid}
                           orgslug={orgslug}

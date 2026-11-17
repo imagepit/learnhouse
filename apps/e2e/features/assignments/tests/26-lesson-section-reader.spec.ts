@@ -53,7 +53,17 @@ test('reads a lesson by section with stable Japanese headings and browser histor
   await expect(duplicates.last()).not.toHaveAttribute('aria-current', 'location')
 
   await body.getByRole('link', { name: /次のセクション.*履歴を読む/ }).click()
-  await expect(body.getByRole('heading', { name: '履歴を読む' })).toBeFocused()
+  const sectionHeading = body.getByRole('heading', { name: '履歴を読む' })
+  await expect(sectionHeading).toBeFocused()
+  const header = page.locator('[data-fixed-activity-bar]')
+  await expect(header).toBeVisible()
+  await expect.poll(async () => {
+    const [bar, rail, heading] = await Promise.all([
+      header.boundingBox(), toc.boundingBox(), sectionHeading.boundingBox(),
+    ])
+    if (!bar || !rail || !heading) return 0
+    return Math.min(rail.y, heading.y) - (bar.y + bar.height)
+  }).toBeGreaterThanOrEqual(24)
   await expect(body.getByText('H2より前の導入文')).toHaveCount(0)
   await page.reload()
   await expect(body.getByRole('heading', { name: '履歴を読む' })).toBeVisible()

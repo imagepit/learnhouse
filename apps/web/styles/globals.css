@@ -2623,6 +2623,8 @@
 
 .lesson-section-reader {
   --lesson-reader-top: 8.5rem;
+  scroll-margin-top: calc(var(--lesson-reader-top) + 1.5rem);
+  min-block-size: calc(100dvh - var(--lesson-reader-top) - 1.5rem);
   display: grid;
   grid-template-columns: minmax(12rem, 22%) minmax(0, 1fr);
   gap: 1.5rem;

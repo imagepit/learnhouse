@@ -12,6 +12,7 @@ interface ReaderProps {
 export default function LessonSectionReader({ sections, renderSection }: ReaderProps) {
   const [hash, setHash] = useState('')
   const [ready, setReady] = useState(false)
+  const reader = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
   const { sectionId, headingId } = resolveReaderLocation(sections, hash)
   const index = sections.findIndex(section => section.id === sectionId)
@@ -45,7 +46,8 @@ export default function LessonSectionReader({ sections, renderSection }: ReaderP
       observer.disconnect()
       frame = requestAnimationFrame(() => {
         target.focus({ preventScroll: true })
-        target.scrollIntoView({ block: 'start' })
+        const scrollTarget = headingId ? target : reader.current
+        scrollTarget?.scrollIntoView({ block: 'start' })
       })
     }
 
@@ -55,7 +57,7 @@ export default function LessonSectionReader({ sections, renderSection }: ReaderP
       observer.disconnect()
       cancelAnimationFrame(frame)
     }
-  }, [hash, ready, targetId])
+  }, [hash, headingId, ready, targetId])
 
   if (!section) return null
 
@@ -72,13 +74,14 @@ export default function LessonSectionReader({ sections, renderSection }: ReaderP
     const target = targetId && body.current?.querySelector<HTMLElement>('#' + CSS.escape(targetId))
     if (target) {
       target.focus({ preventScroll: true })
-      target.scrollIntoView({ block: 'start' })
+      const scrollTarget = headingId ? target : reader.current
+      scrollTarget?.scrollIntoView({ block: 'start' })
     }
   }
 
   const previous = sections[index - 1]
   const next = sections[index + 1]
-  return <div className="lesson-section-reader">
+  return <div className="lesson-section-reader" ref={reader}>
     <SectionTableOfContents sections={sections} current={section} body={body} onNavigate={navigate} />
     <div className="lesson-section-body" ref={body}>
       {renderSection(section)}

@@ -15,6 +15,7 @@ interface FixedActivitySecondaryBarProps {
   activity: any
   /** Dark styling, for pages on the video theater band. */
   dark?: boolean
+  sectionReader?: boolean
 }
 
 // Memoized navigation buttons component
@@ -177,13 +178,22 @@ export default function FixedActivitySecondaryBar(props: FixedActivitySecondaryB
   };
 
   useEffect(() => {
+    const updateSectionHeader = () => {
+      const reader = props.sectionReader && document.querySelector<HTMLElement>('.lesson-section-reader');
+      if (!reader) return false;
+      const landingTop = Number.parseFloat(getComputedStyle(reader).scrollMarginTop);
+      setShouldShow(reader.getBoundingClientRect().top <= landingTop + 1);
+      return true;
+    };
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 0);
+      updateSectionHeader();
     };
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setShouldShow(!entry.isIntersecting);
+        if (!updateSectionHeader()) setShouldShow(!entry.isIntersecting);
       },
       {
         threshold: [0, 0.1, 1],
@@ -197,20 +207,24 @@ export default function FixedActivitySecondaryBar(props: FixedActivitySecondaryB
       observer.observe(mainActivityInfo);
     }
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
+    handleScroll();
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
       if (mainActivityInfoRef.current) {
         observer.unobserve(mainActivityInfoRef.current);
       }
     };
-  }, []);
+  }, [props.sectionReader]);
 
   if (!shouldShow) return null;
 
   return (
     <div
+      data-fixed-activity-bar
       // Phones get MobileActivityBar at the bottom edge instead.
       className={`max-md:hidden fixed top-[60px] start-0 end-0 backdrop-blur-xl transition-all duration-300 animate-in fade-in slide-in-from-top ${
         props.dark ? 'bg-[#141414]/90 border-b border-white/5' : 'bg-white/90'
