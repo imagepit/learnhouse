@@ -15,6 +15,8 @@ interface FixedActivitySecondaryBarProps {
   activity: any
   /** Dark styling, for pages on the video theater band. */
   dark?: boolean
+  sectionReader?: boolean
+  chapterLabel?: string
 }
 
 // Memoized navigation buttons component
@@ -96,7 +98,7 @@ const NavigationButtons = memo(({
 NavigationButtons.displayName = 'NavigationButtons';
 
 // Memoized course info component
-const CourseInfo = memo(({ course, org, dark = false }: { course: any, org: any, dark?: boolean }) => {
+const CourseInfo = memo(({ course, org, chapterLabel, dark = false }: { course: any, org: any, chapterLabel?: string, dark?: boolean }) => {
   const { t } = useTranslation();
   return (
     <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-shrink">
@@ -116,7 +118,8 @@ const CourseInfo = memo(({ course, org, dark = false }: { course: any, org: any,
         alt=""
       />
       <div className="flex flex-col -space-y-0.5 min-w-0 hidden sm:block">
-        <p className={`text-sm font-medium ${dark ? 'text-white/50' : 'text-gray-500'}`}>{t('courses.courses')}</p>
+        <p className={`truncate text-sm font-medium ${dark ? 'text-white/70' : chapterLabel ? 'text-gray-800' : 'text-gray-500'}`}
+          title={chapterLabel}>{chapterLabel ?? t('courses.courses')}</p>
         <h1 className={`font-semibold text-base truncate ${dark ? 'text-white' : 'text-gray-900'}`}>
           {course.name}
         </h1>
@@ -177,13 +180,22 @@ export default function FixedActivitySecondaryBar(props: FixedActivitySecondaryB
   };
 
   useEffect(() => {
+    const updateSectionHeader = () => {
+      const reader = props.sectionReader && document.querySelector<HTMLElement>('.lesson-section-reader');
+      if (!reader) return false;
+      const landingTop = Number.parseFloat(getComputedStyle(reader).scrollMarginTop);
+      setShouldShow(reader.getBoundingClientRect().top <= landingTop + 1);
+      return true;
+    };
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 0);
+      updateSectionHeader();
     };
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setShouldShow(!entry.isIntersecting);
+        if (!updateSectionHeader()) setShouldShow(!entry.isIntersecting);
       },
       {
         threshold: [0, 0.1, 1],
@@ -197,20 +209,24 @@ export default function FixedActivitySecondaryBar(props: FixedActivitySecondaryB
       observer.observe(mainActivityInfo);
     }
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
+    handleScroll();
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
       if (mainActivityInfoRef.current) {
         observer.unobserve(mainActivityInfoRef.current);
       }
     };
-  }, []);
+  }, [props.sectionReader]);
 
   if (!shouldShow) return null;
 
   return (
     <div
+      data-fixed-activity-bar
       // Phones get MobileActivityBar at the bottom edge instead.
       className={`max-md:hidden fixed top-[60px] start-0 end-0 backdrop-blur-xl transition-all duration-300 animate-in fade-in slide-in-from-top ${
         props.dark ? 'bg-[#141414]/90 border-b border-white/5' : 'bg-white/90'
@@ -219,7 +235,7 @@ export default function FixedActivitySecondaryBar(props: FixedActivitySecondaryB
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 py-2">
-          <CourseInfo course={props.course} org={org} dark={props.dark} />
+          <CourseInfo course={props.course} org={org} chapterLabel={props.chapterLabel} dark={props.dark} />
           
           <div className="flex items-center flex-shrink-0">
             <NavigationButtons

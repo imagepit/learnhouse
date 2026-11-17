@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent, type RefObject } from 'react'
 import { Editor } from '@tiptap/react'
 import { Check } from 'lucide-react'
+import { readerHref, type LessonSection } from './lessonSections'
 
 interface TableOfContentsProps {
   editor: Editor | null
@@ -76,3 +77,75 @@ const TableOfContents = ({ editor }: TableOfContentsProps) => {
 }
 
 export default TableOfContents
+
+// Based on the IMAGEPIT design-system Toc. This reader scopes observation to
+// its active section and tracks the last heading above the fixed page header.
+export function SectionTableOfContents({ sections, chapterLabel, current, body, onNavigate }: {
+  sections: LessonSection[]
+  chapterLabel?: string
+  current: LessonSection
+  body: RefObject<HTMLDivElement | null>
+  onNavigate: (event: MouseEvent<HTMLAnchorElement>) => void
+}) {
+  const [active, setActive] = useState<string>()
+
+  useEffect(() => {
+    const root = body.current
+    if (!root) return
+    let frame = 0
+    const update = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const offset = Number.parseFloat(getComputedStyle(root).scrollMarginTop) || 112
+        let heading: string | undefined
+        for (const item of current.headings) {
+          const node = root.querySelector('#' + CSS.escape(item.id))
+          if (node && node.getBoundingClientRect().top <= offset + 4) heading = item.id
+        }
+        setActive(heading)
+      })
+    }
+    const resize = new ResizeObserver(update)
+    resize.observe(root)
+    window.addEventListener('scroll', update, { capture: true, passive: true })
+    window.addEventListener('resize', update)
+    update()
+    return () => {
+      cancelAnimationFrame(frame)
+      resize.disconnect()
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [body, current])
+
+  function links() {
+    return <ul className="lesson-section-toc-list">
+      {sections.map(section => (
+        <li key={section.id}>
+          <a href={readerHref(section.id)} onClick={onNavigate}
+            aria-current={section.id === current.id ? 'page' : undefined}>{section.title}</a>
+          {section.id === current.id && section.headings.length > 0 && (
+            <div className="ui-toc">
+              <p className="ui-toc__title">このセクション</p>
+              <ul>
+                {section.headings.map(heading => <li key={heading.id} className="ui-toc__item">
+                  <a href={readerHref(section.id, heading.id)} onClick={onNavigate}
+                    aria-current={heading.id === active ? 'location' : undefined}
+                    data-active={heading.id === active || undefined}>{heading.title}</a>
+                </li>)}
+              </ul>
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  }
+
+  return <aside className="lesson-section-rail">
+    <nav aria-label="章の目次" className="lesson-section-toc-desktop">{links()}</nav>
+    <details className="lesson-section-toc-mobile">
+      <summary>{chapterLabel ? `${chapterLabel} の目次` : '章の目次'}</summary>
+      <nav aria-label="章の目次">{links()}</nav>
+    </details>
+  </aside>
+}
