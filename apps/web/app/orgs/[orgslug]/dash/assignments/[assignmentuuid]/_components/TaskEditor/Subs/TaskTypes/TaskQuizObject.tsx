@@ -73,6 +73,7 @@ type TaskQuizObjectProps = {
     view: 'teacher' | 'student' | 'grading';
     sequential?: boolean;
     pastDue?: boolean;
+    onSequentialSubmitReady?: (ready: boolean) => void;
     user_id?: string; // Only for read-only view
     onGraded?: () => void; // Notify parent (grading view) after an inline grade
     assignmentTaskUUID?: string;
@@ -84,7 +85,7 @@ type Submission = {
     answer: boolean;
 };
 
-function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded, sequential = false, pastDue = false }: TaskQuizObjectProps) {
+function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded, sequential = false, pastDue = false, onSequentialSubmitReady }: TaskQuizObjectProps) {
     const { t } = useTranslation()
     const session = useLHSession() as any;
     const access_token = session?.data?.tokens?.access_token;
@@ -284,6 +285,9 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded, sequentia
         isOptionSelected(question.questionUUID, option.optionUUID)
     );
     const currentQuestion = questionIndex === null ? undefined : questions[questionIndex];
+    const isLastQuestion = questionIndex === questions.length - 1;
+    const canSubmitSequential = sequentialActive && isLastQuestion &&
+        !advancing && !pastDue && questions.every(hasAnswer);
 
     useEffect(() => {
         if (!sequentialActive || questionIndex !== null || !assignmentTaskOutsideProvider ||
@@ -292,8 +296,13 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded, sequentia
             userSubmissions.submissions.some(answer => answer.answer &&
                 answer.questionUUID === question.questionUUID && answer.optionUUID === option.optionUUID)
         ));
-        setQuestionIndex(unanswered === -1 ? questions.length : unanswered);
+        setQuestionIndex(unanswered === -1 ? questions.length - 1 : unanswered);
     }, [sequentialActive, questionIndex, assignmentTaskOutsideProvider, submissionHydrated, questions, userSubmissions]);
+
+    useEffect(() => {
+        onSequentialSubmitReady?.(canSubmitSequential);
+        return () => onSequentialSubmitReady?.(false);
+    }, [canSubmitSequential, onSequentialSubmitReady]);
 
     useEffect(() => {
         if (focusNext.current) {
@@ -302,13 +311,17 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded, sequentia
         }
     }, [questionIndex]);
 
+    function moveToQuestion(index: number) {
+        focusNext.current = true;
+        setQuestionIndex(index);
+    }
+
     async function advance(flush: () => Promise<boolean>) {
-        if (!currentQuestion || questionIndex === null || !hasAnswer(currentQuestion) || advancing || pastDue) return;
+        if (!currentQuestion || questionIndex === null || isLastQuestion || !hasAnswer(currentQuestion) || advancing || pastDue) return;
         setAdvancing(true);
         try {
             if (await flush()) {
-                focusNext.current = true;
-                setQuestionIndex(questionIndex + 1);
+                moveToQuestion(questionIndex + 1);
             }
         } finally {
             setAdvancing(false);
@@ -675,31 +688,36 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded, sequentia
     if (questions && questions.length >= 0) {
         return (
             <AssignmentBoxUI submitFC={submitFC} saveFC={saveFC} gradeFC={gradeFC} gradeCustomFC={gradeCustomFC} view={view} currentPoints={userSubmissionObject?.grade} currentFeedback={userSubmissionObject?.task_submission_grade_feedback} maxPoints={assignmentTaskOutsideProvider?.max_grade_value} dirtyValue={serializeSelectedOptions(userSubmissions.submissions)} savedValue={serializeSelectedOptions(initialUserSubmissions.submissions)} taskUUID={assignmentTaskUUID} type="quiz" autoGradable={true}
-                canSubmit={sequentialActive ? () => questionIndex !== null && !advancing && !pastDue && questions.length > 1 && questions.every(hasAnswer) : undefined}
-                renderStudentControls={sequentialActive && currentQuestion ? flush => (
-                    <div className="mt-5 flex justify-end">
-                        <button type="button" disabled={advancing || pastDue || !hasAnswer(currentQuestion)}
-                            onClick={() => void advance(flush)}
-                            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                            {questionIndex === questions.length - 1
-                                ? t('assignments.quiz.save_last_answer')
-                                : t('assignments.quiz.next_question')}
-                        </button>
+                canSubmit={sequentialActive ? () => canSubmitSequential : undefined}
+                renderStudentControls={sequentialActive && currentQuestion && questionIndex !== null ? flush => (
+                    <div className="mt-5 flex min-h-9 items-center gap-3">
+                        {questionIndex > 0 && (
+                            <button type="button" disabled={advancing}
+                                onClick={() => moveToQuestion(questionIndex - 1)}
+                                className="rounded-lg border border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
+                                {t('assignments.quiz.previous_question')}
+                            </button>
+                        )}
+                        {!isLastQuestion && !pastDue && hasAnswer(currentQuestion) && (
+                            <button type="button" disabled={advancing}
+                                onClick={() => void advance(flush)}
+                                className="ms-auto rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 motion-safe:animate-[fadeIn_0.2s_ease-out]">
+                                {t('assignments.quiz.next_question')}
+                            </button>
+                        )}
                     </div>
                 ) : undefined}>
                 {sequentialActive && questionIndex !== null && (
                     <div className="mb-5 space-y-2">
                         <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold">
-                            {currentQuestion
-                                ? t('assignments.quiz.question_position', { current: questionIndex + 1, total: questions.length })
-                                : t('assignments.quiz.all_answers_saved')}
+                            {t('assignments.quiz.question_position', { current: questionIndex + 1, total: questions.length })}
                         </h3>
                         <div className="h-2 overflow-hidden rounded-full bg-neutral-100"
                             role="progressbar" aria-valuemin={0} aria-valuemax={questions.length}
-                            aria-valuenow={Math.min(questionIndex + 1, questions.length)}
-                            aria-label={t('assignments.quiz.question_position', { current: Math.min(questionIndex + 1, questions.length), total: questions.length })}>
+                            aria-valuenow={questionIndex + 1}
+                            aria-label={t('assignments.quiz.question_position', { current: questionIndex + 1, total: questions.length })}>
                             <div className="h-full rounded-full bg-teal-600"
-                                style={{ width: `${Math.min(questionIndex + 1, questions.length) / questions.length * 100}%` }} />
+                                style={{ width: `${(questionIndex + 1) / questions.length * 100}%` }} />
                         </div>
                     </div>
                 )}

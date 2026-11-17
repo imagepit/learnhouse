@@ -7,7 +7,7 @@ import { getUserSubmission } from '../api'
 
 test.use({ storageState: STUDENT_STATE })
 
-test('saves one question at a time, resumes after reload, and grades once at the end', async ({ page }, info) => {
+test('reveals quiz navigation after answering, supports review, and grades once at the end', async ({ page }, info) => {
   const questions = Array.from({ length: 10 }, (_, index) => ({
     questionUUID: `question-${index}`,
     questionText: `Sequential prompt ${index + 1}`,
@@ -30,11 +30,14 @@ test('saves one question at a time, resumes after reload, and grades once at the
   await view.open(s.bareCourseUuid, s.bareActivityUuid)
 
   const next = page.getByRole('button', { name: 'Next question' })
+  const previous = page.getByRole('button', { name: 'Previous question' })
+  const submit = page.getByRole('button', { name: 'Submit for grading' })
   const position = (index: number) => page.getByRole('heading', { name: `Question ${index}/10` })
   await expect(position(1)).toBeVisible()
   await expect(page.getByText('Sequential prompt 2', { exact: true })).toHaveCount(0)
-  await expect(next).toBeDisabled()
-  await next.scrollIntoViewIfNeeded()
+  await expect(next).toBeHidden()
+  await expect(previous).toBeHidden()
+  await position(1).scrollIntoViewIfNeeded()
   await info.attach('desktop-question', { body: await page.screenshot(), contentType: 'image/png' })
 
   const submitPath = `**/assignments/${s.seeded.assignmentUuid}/submissions`
@@ -44,39 +47,67 @@ test('saves one question at a time, resumes after reload, and grades once at the
       attemptedSubmits.push(request.url())
     }
   })
-  await view.submitForGrading()
-  await expect(page.getByText('Wait for the quiz to load and answer all questions before submitting.')).toBeVisible()
-  expect(attemptedSubmits).toHaveLength(0)
+  await expect(page.getByText('Submit for grading', { exact: true })).toBeHidden()
 
   const savePath = `**/assignments/${s.seeded.assignmentUuid}/tasks/*/submissions`
   await page.route(savePath, route => route.request().method() === 'PUT' ? route.abort() : route.continue())
-  await view.answerQuiz('A')
+  await view.answerQuiz('C')
   await next.click()
   await expect(next).toBeEnabled()
   await expect(position(1)).toBeVisible()
-  await expect(page.getByRole('radio', { name: /Option a/ })).toBeChecked()
+  await expect(page.getByRole('radio', { name: /Option c/ })).toBeChecked()
   await page.unroute(savePath)
   await next.click()
   await expect(position(2)).toBeVisible()
   await page.setViewportSize({ width: 390, height: 844 })
   await page.reload()
   await expect(position(2)).toBeVisible()
-  await next.scrollIntoViewIfNeeded()
+  await previous.scrollIntoViewIfNeeded()
   await info.attach('mobile-resumed-question', { body: await page.screenshot(), contentType: 'image/png' })
+  await previous.click()
+  await expect(position(1)).toBeFocused()
+  await expect(page.getByRole('radio', { name: /Option c/ })).toBeChecked()
+  await view.answerQuiz('A')
+  await next.click()
   await view.answerQuiz('A')
   await view.answerQuiz('B')
   await next.click()
 
-  for (let index = 3; index <= questions.length; index++) {
+  for (let index = 3; index < questions.length; index++) {
     await expect(position(index)).toBeVisible()
     await view.answerQuiz('A')
-    await (index === questions.length ? page.getByRole('button', { name: 'Save last answer' }) : next).click()
+    await next.click()
   }
 
-  await expect(page.getByRole('heading', { name: 'All answers saved' })).toBeVisible()
+  await expect(position(10)).toBeVisible()
+  await expect(next).toBeHidden()
+  await expect(submit).toBeHidden()
+  await view.answerQuiz('A')
+  await expect(submit).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save last answer' })).toBeHidden()
+  await previous.click()
+  await expect(position(9)).toBeFocused()
+  await expect(submit).toBeHidden()
+  await next.click()
+  await expect(page.getByRole('radio', { name: /Option a/ })).toBeChecked()
+  await expect(page.getByText('Submit for grading', { exact: true })).toHaveCount(1)
+
+  await page.reload()
+  await expect(position(10)).toBeVisible()
+  await expect(submit).toBeVisible()
+
+  await page.route(savePath, route => route.request().method() === 'PUT' ? route.abort() : route.continue())
+  await view.answerQuiz('C')
+  await view.submitForGrading()
+  expect(attemptedSubmits).toHaveLength(0)
+  await expect(position(10)).toBeVisible()
+  await expect(page.getByRole('radio', { name: /Option c/ })).toBeChecked()
+  await page.unroute(savePath)
+  await view.answerQuiz('A')
+
   await page.route(submitPath, route => route.request().method() === 'POST' ? route.abort() : route.continue())
   await view.submitForGrading()
-  await expect(page.getByRole('heading', { name: 'All answers saved' })).toBeVisible()
+  await expect(position(10)).toBeVisible()
   await page.unroute(submitPath)
   await view.submitForGrading()
   await view.expectGraded(100)
@@ -87,10 +118,10 @@ test('saves one question at a time, resumes after reload, and grades once at the
 
   await view.retry()
   await expect(position(1)).toBeVisible()
-  await expect(next).toBeDisabled()
+  await expect(next).toBeHidden()
   await req('PUT', `/assignments/${s.seeded.assignmentUuid}`, s.adminToken, { due_date: '2020-01-01T00:00:00Z' })
   await page.reload()
   await expect(page.getByText('Deadline passed', { exact: true }).first()).toBeVisible()
-  await expect(next).toBeDisabled()
+  await expect(next).toBeHidden()
   await expect(page.getByRole('radio', { name: /Option a/ })).toBeDisabled()
 })

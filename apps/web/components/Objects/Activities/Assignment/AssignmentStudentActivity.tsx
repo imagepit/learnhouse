@@ -16,7 +16,7 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import { sortTasksByOrder } from '@/lib/assignments/taskOrder'
-import { ASSIGNMENT_SUBMIT_EVENT, taskSubmissionHasAnswer } from './assignmentUI'
+import { ASSIGNMENT_SUBMIT_EVENT, getSequentialQuizQuestions, taskSubmissionHasAnswer } from './assignmentUI'
 
 type ParsedDueDate = { at: Date; hasTime: boolean }
 
@@ -151,10 +151,9 @@ function AssignmentStudentActivity() {
 
   const tasks: any[] = useMemo(() => (assignments ? sortTasksByOrder(assignments?.assignment_tasks) : []), [assignments])
   const isQuiz = tasks.length > 0 && tasks.every((task) => task.assignment_type === 'QUIZ')
-  const quizQuestions = tasks.length === 1 && isQuiz && Array.isArray(tasks[0].contents?.questions)
-    ? tasks[0].contents.questions
-    : []
+  const quizQuestions = getSequentialQuizQuestions(tasks)
   const sequentialQuiz = quizQuestions.length > 1
+  const [sequentialSubmitReady, setSequentialSubmitReady] = useState(false)
   const savedQuizAnswers = sequentialQuiz
     ? taskSubmissionsMap?.[tasks[0].assignment_task_uuid]?.task_submission?.submissions
     : undefined
@@ -464,7 +463,7 @@ function AssignmentStudentActivity() {
                 answers as a stale saved baseline (which would submit empty ->
                 0% on the next attempt). */}
             <div className='px-4 sm:px-5 pt-4 pb-4 sm:pb-5'>
-              {task.assignment_type === 'QUIZ' && <TaskQuizObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} sequential={sequentialQuiz} pastDue={isPastDue} />}
+              {task.assignment_type === 'QUIZ' && <TaskQuizObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} sequential={sequentialQuiz} pastDue={isPastDue} onSequentialSubmitReady={sequentialQuiz ? setSequentialSubmitReady : undefined} />}
               {task.assignment_type === 'FILE_SUBMISSION' && <TaskFileObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} />}
               {task.assignment_type === 'FORM' && <TaskFormObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} />}
               {task.assignment_type === 'CODE' && <TaskCodeObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} />}
@@ -477,14 +476,12 @@ function AssignmentStudentActivity() {
 
       {isQuiz && quizSolutionReady && solutionPanel}
 
-      {/* Where the work ends: hand it in, or see where it stands. The button
-          opens the same confirmation as the activity bar's submit control. */}
-      {tasks.length > 0 && isAwaitingSubmission && !isPastDue && (!sequentialQuiz || savedQuizCount === quizQuestions.length) && (
-        <div className='flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl bg-neutral-900 p-4 sm:p-5 text-white'>
+      {tasks.length > 0 && isAwaitingSubmission && !isPastDue && (!sequentialQuiz || sequentialSubmitReady) && (
+        <div className={`flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl bg-neutral-900 p-4 sm:p-5 text-white ${sequentialQuiz ? 'motion-safe:animate-[fadeIn_0.2s_ease-out]' : ''}`}>
           <div className='min-w-0 flex-1'>
             <p className='text-base font-semibold'>{t('assignments.handin_ready_title', { defaultValue: 'Ready to hand in?' })}</p>
             <p className='mt-0.5 text-sm text-neutral-300'>
-              {t('assignments.answered_progress', { answered: progressAnswered, total: progressTotal, defaultValue: '{{answered}} of {{total}} answered' })}
+              {t('assignments.answered_progress', { answered: sequentialQuiz ? progressTotal : progressAnswered, total: progressTotal, defaultValue: '{{answered}} of {{total}} answered' })}
               {' · '}
               {t('assignments.handin_ready_body', { defaultValue: 'Your answers save automatically.' })}
             </p>

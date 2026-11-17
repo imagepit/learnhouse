@@ -19,11 +19,12 @@ import {
 } from 'lucide-react'
 import { getFinalGrade, retryAssignmentSubmission, submitAssignmentForGrading } from '@services/courses/assignments'
 import { useAssignmentSubmission } from '@components/Contexts/Assignments/AssignmentSubmissionContext'
+import { useAssignmentTasksQuery } from '@components/Contexts/Assignments/AssignmentContext'
 import { useAssignmentDirtyTasks } from '@components/Contexts/Assignments/AssignmentDirtyTasksContext'
 import { useLHSession } from '@components/Contexts/LHSessionContext'
 import ConfirmationModal from '@components/Objects/StyledElements/ConfirmationModal/ConfirmationModal'
 import Modal from '@components/Objects/StyledElements/Modal/Modal'
-import { ASSIGNMENT_SUBMIT_EVENT } from '@components/Objects/Activities/Assignment/assignmentUI'
+import { ASSIGNMENT_SUBMIT_EVENT, getSequentialQuizQuestions } from '@components/Objects/Activities/Assignment/assignmentUI'
 import { isAssignmentPastDue } from '@components/Objects/Activities/Assignment/AssignmentStudentActivity'
 import { queryKeys } from '@/lib/query/keys'
 
@@ -46,6 +47,8 @@ export default function AssignmentTools(props: {
   const session = useLHSession() as any;
   const queryClient = useQueryClient();
   const dirtyTasks = useAssignmentDirtyTasks();
+  const { data: tasks, isPending: assignmentTasksPending } = useAssignmentTasksQuery(props.assignment?.assignment_uuid)
+  const usesSequentialSubmit = getSequentialQuizQuestions(tasks).length > 0
   const [gradeData, setGradeData] = React.useState<any>(null);
   const [isGradeModalOpen, setIsGradeModalOpen] = React.useState(false);
   const { width: windowWidth, height: windowHeight } = useWindowSize();
@@ -248,7 +251,7 @@ export default function AssignmentTools(props: {
             ? t('assignments.hand_in_title', { defaultValue: 'Hand in your work' })
             : t('assignments.submit_assignment_title')
         }
-        dialogTrigger={
+        dialogTrigger={assignmentTasksPending || usesSequentialSubmit ? undefined : (
           <div className="bg-cyan-800 rounded-md px-4 nice-shadow flex flex-col p-2.5 text-white hover:cursor-pointer transition delay-150 duration-300 ease-in-out">
             <span className="text-[10px] font-bold mb-1 uppercase">
               {isRetryAttempt
@@ -264,7 +267,7 @@ export default function AssignmentTools(props: {
               </span>
             </div>
           </div>
-        }
+        )}
         functionToExecute={submitForGradingUI}
         status="info"
         openOnEvent={ASSIGNMENT_SUBMIT_EVENT}

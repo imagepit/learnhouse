@@ -8,6 +8,18 @@ import { useLHSession } from '@components/Contexts/LHSessionContext'
 
 export const AssignmentContext = createContext({})
 
+export function useAssignmentTasksQuery(assignmentUuid: string | undefined) {
+    const session = useLHSession()
+    const accessToken = session?.data?.tokens?.access_token
+
+    return useQuery({
+        queryKey: queryKeys.assignments.tasks(assignmentUuid ?? ''),
+        queryFn: () => apiFetch(`${getAPIUrl()}assignments/${assignmentUuid}/tasks`, accessToken),
+        enabled: !!(assignmentUuid && accessToken),
+        staleTime: 60_000,
+    })
+}
+
 export function AssignmentProvider({ children, assignment_uuid }: { children: React.ReactNode, assignment_uuid: string }) {
     const session = useLHSession() as any
     const accessToken = session?.data?.tokens?.access_token
@@ -19,12 +31,7 @@ export function AssignmentProvider({ children, assignment_uuid }: { children: Re
         staleTime: 60_000,
     })
 
-    const { data: assignment_tasks, error: assignmentTasksError } = useQuery({
-        queryKey: queryKeys.assignments.tasks(assignment_uuid),
-        queryFn: () => apiFetch(`${getAPIUrl()}assignments/${assignment_uuid}/tasks`, accessToken),
-        enabled: !!(assignment_uuid && accessToken),
-        staleTime: 60_000,
-    })
+    const { data: assignment_tasks, error: assignmentTasksError } = useAssignmentTasksQuery(assignment_uuid)
 
     // course_uuid/activity_uuid are now embedded in the assignment payload
     // (joined server-side) so we don't need separate /courses/id and
