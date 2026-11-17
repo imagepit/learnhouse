@@ -12,10 +12,9 @@ import { useLHSession } from '@components/Contexts/LHSessionContext'
 import { constructAcceptValue } from '@/lib/constants';
 import Modal from '@components/Objects/StyledElements/Modal/Modal'
 import { useTranslation } from 'react-i18next'
-import { activityImageUrl, httpsImageUrl } from '@services/media/activityImages'
+import { activityImageUrl, httpsImageUrl, OUTLINE_IMAGE_MAX_WIDTH } from '@services/media/activityImages'
 import AIImageButton from '@components/Objects/AI/AIImageButton'
 
-const OUTLINE_IMAGE_MAX_WIDTH = 600
 const SUPPORTED_FILES = constructAcceptValue(['jpg', 'png', 'webp', 'gif'])
 const UNSPLASH_UTM = '?utm_source=LearnHouse&utm_medium=referral'
 const withUtm = (url?: string | null) => (url ? `${url}${UNSPLASH_UTM}` : '')

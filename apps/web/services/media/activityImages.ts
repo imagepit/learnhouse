@@ -3,6 +3,16 @@ const courseId = new RegExp('^course_' + uuid + '$')
 const activityId = new RegExp('^activity_' + uuid + '$')
 const attachmentId = new RegExp('^' + uuid + '$')
 
+export const OUTLINE_IMAGE_MAX_WIDTH = 600
+
+const outlineImagePath = new RegExp(
+  '^/api/v1/courses/course_' + uuid + '/activities/activity_' + uuid + '/outline-images/' + uuid + '$',
+)
+
+export function isOutlineActivityImagePath(src: string): boolean {
+  return outlineImagePath.test(src)
+}
+
 export function httpsImageUrl(value: unknown): string | undefined {
   if (typeof value !== 'string' || !/^https:\/\/[^\s<>"'\\]{1,2040}$/i.test(value)) {
     return undefined

@@ -6,6 +6,8 @@ import remarkGfm from 'remark-gfm'
 import { Box, CircleAlert, Info, Lightbulb, NotebookPen, TriangleAlert } from 'lucide-react'
 import type { Blockquote, BlockContent, PhrasingContent, Root } from 'mdast'
 import PeleDiagram from './PeleDiagram'
+import OutlineMarkdownImage from './OutlineMarkdownImage'
+import { isOutlineActivityImagePath } from '@services/media/activityImages'
 import { AnnotatedCode, FileTree } from './vendor/blocks'
 import { parseMarkdownDirectives, type MarkdownRootContent } from './vendor/directives'
 import { parseFileTreeFenceMeta, parseFileTreeFenceWithHighlights } from './vendor/file-tree'
@@ -106,6 +108,12 @@ const RichMarkdown = memo(function RichMarkdown({ source, format, copyCode = tru
     if (format !== 'markdown' || source.length > MAX_MARKDOWN_LENGTH) return null
     const { tree, fileTrees } = richMarkdownTree(source)
     const components: Components = {
+      img({ node: _node, src, alt, ...props }) {
+        if (typeof src === 'string' && isOutlineActivityImagePath(src)) {
+          return <OutlineMarkdownImage key={src} src={src} alt={alt ?? ''} />
+        }
+        return <img {...props} src={src} alt={alt} />
+      },
       p({ node, children, ...props }) {
         const variant = node?.properties['data-callout-title']
         const Icon = typeof variant === 'string' ? CALLOUTS.get(variant)?.Icon : undefined
