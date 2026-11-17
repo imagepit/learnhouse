@@ -5,12 +5,24 @@ Source revision: imagepit/design-system@8d0629a66b413a733993b9fe538a14e41b291508
 - The namesake files under `packages/md-react/src` supply the directive parser,
   file tree and steps normalization, and Shiki line decorations.
 - `code-line-contract.ts` comes from `packages/ui/src`.
-- `blocks.tsx` adapts the code block and file tree display to LearnHouse. The
-  highlighter returns HAST so React can render text without injecting HTML.
-- `PeleDiagram.tsx` adapts the SVG isolation approach in
-  `packages/render-web/src/mermaid-diagram.tsx` for Pele.
-- Styles use the existing LearnHouse palette and the step and code structure
-  from `packages/web-style`.
+- `blocks.tsx` adapts `packages/ui/src/file-tree.tsx` and `code-block.tsx`.
+  The Markdown tree uses the standard file row, status and directory views.
+  The code view renders the highlighter's HAST with React and copies clean code.
+  `language-icon.tsx` uses the design system's Lucide file glyphs and shares
+  that mapping with code headers.
+- `RichMarkdown.tsx` emits the steps structure from `packages/ui/src/steps.tsx`
+  and the learning callout structure from
+  `packages/render-web/src/skins/learning/learning-callout.tsx`. Callout titles
+  and tones follow that skin and `packages/md-react/src/callout-presentation.ts`.
+  Icons use LearnHouse's existing Lucide dependency.
+- `PeleDiagram.tsx` uses the diagram frame from `packages/ui/src/mermaid-diagram.tsx`
+  with the existing sanitized Pele output and intrinsic sizing.
+- `apps/web/styles/rich-markdown.css` scopes the learning callout rules from
+  `packages/render-web/src/skins/learning.css` and the steps, file-tree, code-block,
+  code-lines, Mermaid, copy button and Shiki rules from `packages/web-style/src`
+  to `.lh-rich-markdown`. It includes the required declarations and their
+  dependencies from `tokens/imagepit-web.css`. Line annotations use a Unicode
+  arrow to keep the glyph independent of a bundled font.
 
 The original packages use restricted distribution. Confirm redistribution rights
 for this copy before release and include it in LearnHouse's corresponding source

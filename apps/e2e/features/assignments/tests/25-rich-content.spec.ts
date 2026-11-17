@@ -12,7 +12,7 @@ test.use({ storageState: STUDENT_STATE })
 const content = [
   ':::note Check the repository', 'Start with the current branch.', ':::',
   '', ':::step', '1. Inspect the status', '1. Review the changes', ':::',
-  '', '```tree', '.', '└── README.md', '```',
+  '', '```tree title="Repository"', '.', '├── README.md', '└── src/', '    └── ++ app.ts <--[Entry point]', '```',
   '', '```mermaid', 'flowchart LR', '  A["Local <branch>"] --> B[Remote]', '```',
   '', '```bash', '//highlightstart', 'git status # <--[Look for changes]', '//highlightend', '```',
 ].join('\n')
@@ -49,10 +49,22 @@ test('teacher previews and saves rich content; a learner unlocks it after gradin
     await dialog.getByRole('button', { name: 'Preview', exact: true }).first().click()
     const preview = dialog.locator('.lh-rich-markdown')
     await expect(preview.getByText('Check the repository', { exact: true })).toBeVisible()
-    await expect(preview.getByText('README.md', { exact: true })).toBeVisible()
+    const fileTree = preview.getByRole('region', { name: 'Repository' })
+    await expect(fileTree.getByText('README.md', { exact: true })).toBeVisible()
+    const directory = fileTree.locator('summary').filter({ hasText: 'src' })
+    const file = fileTree.getByText('app.ts', { exact: true })
+    await expect(file).toBeVisible()
+    await expect(fileTree.locator('[data-status="added"] .ui-file-tree__label')).toHaveCSS('padding-inline-start', '24px')
+    await directory.click()
+    await expect(fileTree.getByText('app.ts', { exact: true })).toBeHidden()
+    await directory.click()
+    await expect(fileTree.getByText('Entry point', { exact: true })).toBeVisible()
+    await expect(preview.locator('.ui-step__marker').first()).toHaveCSS('border-radius', '999px')
+    await expect(preview.locator('.rw-learning-callout__title')).toHaveCSS('position', 'absolute')
     await expect(preview.getByText(/Review the changes/)).toBeVisible()
     await expect(dialog.locator('.lh-rich-diagram svg')).toBeVisible()
     await expect(preview.getByText('Local <branch>', { exact: true })).toBeVisible()
+    await expect(preview.locator('.ui-mermaid__error')).toHaveCount(0)
     await expect(dialog.locator('.line--highlight')).toContainText('Look for changes')
     await info.attach('teacher-preview', { body: await dialog.screenshot(), contentType: 'image/png' })
     await dialog.getByRole('button', { name: 'Save Changes' }).click()

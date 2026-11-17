@@ -1,0 +1,828 @@
+/* IMAGEPIT Web styles and used tokens, scoped to rich Markdown. See vendor/SOURCE.md. */
+@charset "UTF-8";
+.lh-rich-markdown {
+  --ip-color-neutral-0: #ffffff;
+  --ip-color-neutral-50: #fafafa;
+  --ip-color-neutral-100: #f5f5f5;
+  --ip-color-neutral-200: #e5e5e5;
+  --ip-color-neutral-400: #a3a3a3;
+  --ip-color-neutral-500: #737373;
+  --ip-color-neutral-800: #262626;
+  --ip-color-neutral-900: #171717;
+  --ip-color-neutral-950: #0a0a0a;
+  --ip-color-background: var(--ip-color-neutral-0);
+  --ip-color-foreground: var(--ip-color-neutral-950);
+  --ip-color-secondary-hover: var(--ip-color-neutral-200);
+  --ip-color-muted: var(--ip-color-neutral-100);
+  --ip-color-muted-foreground: var(--ip-color-neutral-500);
+  --ip-color-border: var(--ip-color-neutral-500);
+  --ip-font-family-sans: Geist, "IBM Plex Sans JP", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ip-font-family-mono: "Geist Mono", "JetBrains Mono", "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  --ip-font-family-code-callout-arrow: "IP Callout Arrow", "JetBrains Mono", "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  --ip-font-size-xs: 0.6875rem;
+  --ip-font-size-sm: 0.75rem;
+  --ip-font-size-ui: 0.875rem;
+  --ip-font-size-code: 0.875rem;
+  --ip-font-size-heading-5: 1rem;
+  --ip-line-height-ui: 1.5;
+  --ip-line-height-code: 1.2;
+  --ip-line-height-heading: 1.4;
+  --ip-font-weight-semibold: 600;
+  --ip-font-weight-bold: 600;
+  --ip-space-1: 0.25rem;
+  --ip-space-2: 0.5rem;
+  --ip-space-3: 0.75rem;
+  --ip-space-4: 1rem;
+  --ip-space-5: 1.5rem;
+  --ip-space-6: 2rem;
+  --ip-space-7: 3rem;
+  --ip-border-width-default: 1px;
+  --ip-radius-sm: 0.375rem;
+  --ip-radius-md: 0.5rem;
+  --ip-radius-lg: 0.625rem;
+  --ip-prose-embedded-block-margin: var(--ip-space-4);
+  --ip-code-inline-padding-x: var(--ip-space-1);
+  --ip-code-inline-padding-y: 0.125rem;
+  --ip-code-block-padding: var(--ip-space-4);
+  --ip-code-header-height: 2.5rem;
+  --ip-code-header-padding-inline: var(--ip-space-4);
+  --ip-figure-caption-gap: var(--ip-space-2);
+  --ip-color-code-background: var(--ip-color-neutral-50);
+  --ip-color-code-foreground: var(--ip-color-neutral-900);
+  --ip-color-code-border: var(--ip-color-border);
+  --ip-color-code-line-add-background: #dcfce7;
+  --ip-color-code-line-add-symbol: #15803d;
+  --ip-color-code-line-del-background: #ffe4e6;
+  --ip-color-code-line-del-symbol: #be123c;
+  --ip-color-code-line-highlight-background: #ffff0066;
+  --ip-color-code-line-error-background: #ff00002f;
+  --ip-color-code-line-warning-background: #ff800045;
+  --ip-color-code-callout-border: #ff0000;
+  --ip-color-code-callout-foreground: #ff0000;
+  --ip-color-code-callout-background: #ffffe0;
+  --ip-color-file-tree-background: var(--ip-color-background);
+  --ip-color-file-tree-foreground: var(--ip-color-foreground);
+  --ip-color-file-tree-muted-foreground: var(--ip-color-muted-foreground);
+  --ip-color-file-tree-border: var(--ip-color-border);
+  --ip-color-file-tree-add-background: var(--ip-color-code-line-add-background);
+  --ip-color-file-tree-add-symbol: var(--ip-color-code-line-add-symbol);
+  --ip-color-file-tree-del-background: var(--ip-color-code-line-del-background);
+  --ip-color-file-tree-del-symbol: var(--ip-color-code-line-del-symbol);
+  --ip-color-file-tree-mod-background: var(--ip-color-code-line-warning-background);
+  --ip-color-file-tree-mod-symbol: var(--ip-color-callout-warning-icon);
+  --ip-color-file-tree-callout-border: var(--ip-color-code-callout-border);
+  --ip-step-marker-size: 2rem;
+  --ip-step-gap: var(--ip-space-7);
+  --ip-step-content-gap: var(--ip-space-3);
+  --ip-step-column-gap: var(--ip-space-6);
+  --ip-color-syntax-comment: var(--ip-color-neutral-400);
+  --ip-color-syntax-keyword: #6d28d9;
+  --ip-color-syntax-string: #0f766e;
+  --ip-color-syntax-constant: #b45309;
+  --ip-color-syntax-function: #1d4ed8;
+  --ip-color-syntax-parameter: var(--ip-color-foreground);
+  --ip-color-syntax-punctuation: var(--ip-color-muted-foreground);
+  --ip-callout-padding: var(--ip-space-4);
+  --ip-callout-gap: var(--ip-space-3);
+  --ip-callout-border-width: var(--ip-border-width-default);
+  --ip-callout-border-radius: var(--ip-radius-md);
+  --ip-color-callout-info-background: #eff6ff;
+  --ip-color-callout-info-border: #93c5fd;
+  --ip-color-callout-info-icon: #1d4ed8;
+  --ip-color-callout-info-foreground: var(--ip-color-neutral-900);
+  --ip-color-callout-success-background: #f0fdf4;
+  --ip-color-callout-success-border: #86efac;
+  --ip-color-callout-success-icon: #15803d;
+  --ip-color-callout-success-foreground: var(--ip-color-neutral-900);
+  --ip-color-callout-warning-background: #fff7ed;
+  --ip-color-callout-warning-border: #fb923c;
+  --ip-color-callout-warning-icon: #c2410c;
+  --ip-color-callout-warning-foreground: var(--ip-color-neutral-900);
+  --ip-color-callout-destructive-background: #fff1f2;
+  --ip-color-callout-destructive-border: #fb7185;
+  --ip-color-callout-destructive-icon: #be123c;
+  --ip-color-callout-destructive-foreground: var(--ip-color-neutral-900);
+  --ip-color-callout-syntax-background: #d5fcd5;
+  --ip-color-callout-syntax-border: #00843c;
+  --ip-color-callout-syntax-foreground: var(--ip-color-neutral-900);
+  --ip-font-size-code-block: var(--ip-font-size-code);
+}
+
+:is(.dark, [data-theme=dark]) .lh-rich-markdown {
+  --ip-color-background: var(--ip-color-neutral-950);
+  --ip-color-foreground: var(--ip-color-neutral-50);
+  --ip-color-secondary-hover: var(--ip-color-neutral-800);
+  --ip-color-muted: var(--ip-color-neutral-900);
+  --ip-color-muted-foreground: var(--ip-color-neutral-400);
+  --ip-color-border: var(--ip-color-neutral-500);
+  --ip-color-code-background: var(--ip-color-neutral-900);
+  --ip-color-code-foreground: var(--ip-color-neutral-100);
+  --ip-color-code-line-add-symbol: #86efac;
+  --ip-color-code-line-add-background: color-mix(in srgb, var(--ip-color-code-line-add-symbol) 18%, var(--ip-color-neutral-900));
+  --ip-color-code-line-del-symbol: #fb7185;
+  --ip-color-code-line-del-background: color-mix(in srgb, var(--ip-color-code-line-del-symbol) 18%, var(--ip-color-neutral-900));
+  --ip-color-code-line-highlight-background: var(--ip-color-neutral-800);
+  --ip-color-code-line-error-background: #ef444424;
+  --ip-color-code-line-warning-background: #f59e0b24;
+  --ip-color-syntax-keyword: #c4b5fd;
+  --ip-color-syntax-string: #6ee7b7;
+  --ip-color-syntax-constant: #fdba74;
+  --ip-color-syntax-function: #93c5fd;
+  --ip-color-callout-info-background: var(--ip-color-neutral-900);
+  --ip-color-callout-info-icon: var(--ip-color-callout-info-border);
+  --ip-color-callout-info-foreground: var(--ip-color-neutral-50);
+  --ip-color-callout-success-background: var(--ip-color-neutral-900);
+  --ip-color-callout-success-icon: var(--ip-color-callout-success-border);
+  --ip-color-callout-success-foreground: var(--ip-color-neutral-50);
+  --ip-color-callout-warning-background: var(--ip-color-neutral-900);
+  --ip-color-callout-warning-icon: var(--ip-color-callout-warning-border);
+  --ip-color-callout-warning-foreground: var(--ip-color-neutral-50);
+  --ip-color-callout-destructive-background: var(--ip-color-neutral-900);
+  --ip-color-callout-destructive-icon: var(--ip-color-callout-destructive-border);
+  --ip-color-callout-destructive-foreground: var(--ip-color-neutral-50);
+  --ip-color-callout-syntax-background: var(--ip-color-neutral-900);
+  --ip-color-callout-syntax-foreground: var(--ip-color-neutral-50);
+}
+
+.lh-rich-markdown .rw-learning-callout {
+  --rw-learning-callout-accent: var(--ip-color-callout-info-icon);
+  --rw-learning-callout-background: var(--ip-color-callout-info-background);
+  --rw-learning-callout-border: var(--ip-color-callout-info-border);
+  --rw-learning-callout-foreground: var(--ip-color-callout-info-foreground);
+  position: relative;
+  margin: var(--ip-space-7) 0 var(--ip-prose-embedded-block-margin);
+  padding: var(--ip-callout-padding);
+  background: var(--rw-learning-callout-background);
+  border: var(--ip-callout-border-width) solid var(--rw-learning-callout-border);
+  border-radius: var(--ip-callout-border-radius);
+  color: var(--rw-learning-callout-foreground);
+  min-width: 0;
+}
+.lh-rich-markdown .rw-learning-callout--success {
+  --rw-learning-callout-accent: var(--ip-color-callout-success-icon);
+  --rw-learning-callout-background: var(--ip-color-callout-success-background);
+  --rw-learning-callout-border: var(--ip-color-callout-success-border);
+  --rw-learning-callout-foreground: var(--ip-color-callout-success-foreground);
+}
+.lh-rich-markdown .rw-learning-callout--warning {
+  --rw-learning-callout-accent: var(--ip-color-callout-warning-icon);
+  --rw-learning-callout-background: var(--ip-color-callout-warning-background);
+  --rw-learning-callout-border: var(--ip-color-callout-warning-border);
+  --rw-learning-callout-foreground: var(--ip-color-callout-warning-foreground);
+}
+.lh-rich-markdown .rw-learning-callout--destructive {
+  --rw-learning-callout-accent: var(--ip-color-callout-destructive-icon);
+  --rw-learning-callout-background: var(--ip-color-callout-destructive-background);
+  --rw-learning-callout-border: var(--ip-color-callout-destructive-border);
+  --rw-learning-callout-foreground: var(--ip-color-callout-destructive-foreground);
+}
+.lh-rich-markdown .rw-learning-callout--syntax {
+  --rw-learning-callout-accent: var(--ip-color-callout-syntax-foreground);
+  --rw-learning-callout-background: var(--ip-color-callout-syntax-background);
+  --rw-learning-callout-border: var(--ip-color-callout-syntax-border);
+  --rw-learning-callout-foreground: var(--ip-color-callout-syntax-foreground);
+}
+.lh-rich-markdown .rw-learning-callout__title {
+  align-items: center;
+  background: var(--ip-color-background);
+  border: var(--ip-callout-border-width) solid var(--rw-learning-callout-border);
+  border-radius: var(--ip-callout-border-radius);
+  color: var(--rw-learning-callout-accent);
+  display: inline-flex;
+  font-weight: var(--ip-font-weight-bold);
+  gap: var(--ip-callout-gap);
+  inset-block-start: calc(-1 * var(--ip-space-4));
+  line-height: var(--ip-line-height-heading);
+  margin: 0;
+  max-width: calc(100% - var(--ip-callout-padding));
+  min-height: var(--ip-space-6);
+  overflow-wrap: anywhere;
+  padding: var(--ip-space-1) var(--ip-space-3);
+  position: absolute;
+}
+.lh-rich-markdown .rw-learning-callout__icon {
+  display: inline-flex;
+  flex: none;
+  line-height: 1;
+}
+.lh-rich-markdown .rw-learning-callout__icon svg {
+  block-size: var(--ip-font-size-ui);
+  display: inline-block;
+  inline-size: var(--ip-font-size-ui);
+}
+.lh-rich-markdown .rw-learning-callout__body > :first-child {
+  margin-top: 0;
+}
+.lh-rich-markdown .rw-learning-callout__body > :last-child {
+  margin-bottom: 0;
+}
+.lh-rich-markdown .rw-learning-callout__body > :where(ul, ol) {
+  margin-top: var(--ip-space-2);
+  margin-bottom: var(--ip-space-2);
+}
+.lh-rich-markdown .rw-learning-callout__body > pre {
+  margin-top: var(--ip-space-3);
+  margin-bottom: 0;
+}
+.lh-rich-markdown .ui-steps {
+  display: grid;
+  gap: var(--ip-step-gap);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lh-rich-markdown .ui-step {
+  align-items: start;
+  column-gap: var(--ip-space-4);
+  display: grid;
+  grid-template-columns: var(--ip-step-marker-size) minmax(0, 1fr);
+  position: relative;
+}
+/* 縦の接続線。マーカー下端から次のステップのマーカー上端まで届くよう、
+     --ip-step-gap分だけ自身の下端を越えて伸ばす（罫線プロパティは使わず、1px幅のbackgroundで描画）。 */
+.lh-rich-markdown .ui-step::before {
+  background: var(--ip-color-border);
+  bottom: calc(-1 * var(--ip-step-gap));
+  content: "";
+  left: calc(var(--ip-step-marker-size) / 2);
+  position: absolute;
+  top: var(--ip-step-marker-size);
+  transform: translateX(-50%);
+  width: 1px;
+}
+/* 最後のステップは次のマーカーが無いため、自身の本文下端で線を止める。 */
+.lh-rich-markdown .ui-step:last-child::before {
+  bottom: 0;
+}
+.lh-rich-markdown .ui-step__marker {
+  align-items: center;
+  background: var(--ip-color-neutral-950);
+  border-radius: 999px;
+  color: var(--ip-color-neutral-0);
+  display: flex;
+  font-size: var(--ip-font-size-ui);
+  font-weight: var(--ip-font-weight-semibold);
+  height: var(--ip-step-marker-size);
+  justify-content: center;
+  width: var(--ip-step-marker-size);
+}
+.lh-rich-markdown .ui-step__content {
+  min-width: 0;
+}
+.lh-rich-markdown .ui-step__title {
+  font-size: var(--ip-font-size-heading-5);
+  font-weight: var(--ip-font-weight-semibold);
+  line-height: var(--ip-line-height-heading);
+  margin: 0;
+}
+.lh-rich-markdown .ui-step__body {
+  margin-top: var(--ip-step-content-gap);
+}
+.lh-rich-markdown .ui-step__body--columns {
+  display: grid;
+  gap: var(--ip-step-column-gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 800px) {
+  .lh-rich-markdown .ui-step__body--columns {
+    grid-template-columns: 1fr;
+  }
+}
+.lh-rich-markdown .ui-file-tree {
+  background: var(--ip-color-file-tree-background);
+  border: var(--ip-border-width-default) solid var(--ip-color-file-tree-border);
+  border-radius: var(--ip-radius-md);
+  color: var(--ip-color-file-tree-foreground);
+  font-family: var(--ip-font-family-mono);
+  font-size: var(--ip-font-size-code);
+  line-height: var(--ip-line-height-code);
+  max-width: 100%;
+  overflow: hidden;
+}
+.lh-rich-markdown .ui-file-tree__title {
+  background: var(--ip-color-muted);
+  border-bottom: var(--ip-border-width-default) solid var(--ip-color-file-tree-border);
+  color: var(--ip-color-file-tree-muted-foreground);
+  font-size: var(--ip-font-size-xs);
+  font-weight: var(--ip-font-weight-semibold);
+  padding: var(--ip-space-2) var(--ip-space-4);
+}
+.lh-rich-markdown .ui-file-tree ul {
+  list-style: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+.lh-rich-markdown .ui-file-tree > ul {
+  padding-block: var(--ip-space-2);
+}
+.lh-rich-markdown .ui-file-tree ul ul {
+  padding-inline-start: 0;
+}
+/* 文章用リストの余白をFile Treeの内側だけでリセットする。 */
+.lh-rich-markdown .ui-file-tree.ui-file-tree.ui-file-tree ul ul {
+  margin-block-start: 0;
+  padding-inline-start: 0;
+}
+.lh-rich-markdown .ui-file-tree.ui-file-tree li {
+  margin: 0;
+  padding: 0;
+}
+.lh-rich-markdown .ui-file-tree li,
+.lh-rich-markdown .ui-file-tree details {
+  min-width: 0;
+}
+.lh-rich-markdown .ui-file-tree__row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ip-space-2);
+  min-width: 0;
+  padding-block: var(--ip-space-1);
+  padding-inline: var(--ip-space-4);
+  /* diff背景の::afterを行背面に閉じる（親backgroundの下に潜らせない） */
+  position: relative;
+  z-index: 0;
+}
+.lh-rich-markdown .ui-file-tree__label {
+  align-items: center;
+  display: inline-flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: var(--ip-space-2);
+  min-width: 0;
+}
+.lh-rich-markdown .ui-file-tree__row > .ui-file-tree__label {
+  padding-inline-start: var(--ip-file-tree-indent, 0);
+}
+/* 開閉しない行にもトグルと同じ幅を確保し、同じ階層のアイコンをそろえる。 */
+.lh-rich-markdown .ui-file-tree__row > .ui-file-tree__label::before {
+  content: "";
+  display: block;
+  flex: none;
+  height: calc(var(--ip-space-1) * 1.5);
+  width: calc(var(--ip-space-1) * 1.5);
+}
+.lh-rich-markdown summary.ui-file-tree__row {
+  cursor: pointer;
+}
+.lh-rich-markdown summary.ui-file-tree__row::before {
+  content: none;
+  display: none;
+}
+.lh-rich-markdown summary.ui-file-tree__row > .ui-file-tree__label::before {
+  border-right: var(--ip-border-width-default) solid currentColor;
+  border-bottom: var(--ip-border-width-default) solid currentColor;
+  box-sizing: border-box;
+  color: var(--ip-color-file-tree-muted-foreground);
+  content: "";
+  display: block;
+  flex: none;
+  height: calc(var(--ip-space-1) * 1.5);
+  transform: rotate(-45deg);
+  width: calc(var(--ip-space-1) * 1.5);
+}
+.lh-rich-markdown details[open] > summary.ui-file-tree__row > .ui-file-tree__label::before {
+  transform: rotate(45deg);
+}
+.lh-rich-markdown summary.ui-file-tree__row:focus-visible {
+  outline: var(--ip-border-width-default) solid var(--ip-color-file-tree-callout-border);
+  outline-offset: calc(var(--ip-space-1) / -4);
+}
+.lh-rich-markdown .ui-file-tree__icon {
+  color: var(--ip-color-file-tree-muted-foreground);
+  display: inline-block;
+  flex: none;
+  height: var(--ip-font-size-code);
+  margin-inline-end: calc(var(--ip-space-1) / -2);
+  width: var(--ip-font-size-code);
+}
+.lh-rich-markdown .ui-file-tree__icon[data-mode=colored][data-kind=directory] {
+  color: var(--ip-color-syntax-constant);
+}
+.lh-rich-markdown .ui-file-tree__icon[data-mode=colored][data-extension=ts],
+.lh-rich-markdown .ui-file-tree__icon[data-mode=colored][data-extension=tsx] {
+  color: var(--ip-color-syntax-function);
+}
+.lh-rich-markdown .ui-file-tree__icon[data-mode=colored][data-extension=js],
+.lh-rich-markdown .ui-file-tree__icon[data-mode=colored][data-extension=jsx],
+.lh-rich-markdown .ui-file-tree__icon[data-mode=colored][data-extension=json] {
+  color: var(--ip-color-syntax-keyword);
+}
+.lh-rich-markdown .ui-file-tree__name,
+.lh-rich-markdown .ui-file-tree__comment,
+.lh-rich-markdown .ui-file-tree .line-callout__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lh-rich-markdown .ui-file-tree__name--emphasized {
+  font-weight: var(--ip-font-weight-bold);
+}
+.lh-rich-markdown .ui-file-tree__comment {
+  color: var(--ip-color-file-tree-muted-foreground);
+}
+/* Plume互換: ネストpaddingの内側ではなく、コンテナ左端までdiff背景を伸ばす */
+.lh-rich-markdown .ui-file-tree li[data-status=added] > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-status=added] > details > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-status=removed] > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-status=removed] > details > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-status=modified] > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-status=modified] > details > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-highlighted=true] > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-highlighted=true] > details > .ui-file-tree__row::after {
+  content: "";
+  inset-block: 0;
+  left: -9999px;
+  pointer-events: none;
+  position: absolute;
+  right: -9999px;
+  z-index: -1;
+}
+.lh-rich-markdown .ui-file-tree li[data-status=added] > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-status=added] > details > .ui-file-tree__row::after {
+  background: var(--ip-color-file-tree-add-background);
+}
+.lh-rich-markdown .ui-file-tree li[data-status=removed] > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-status=removed] > details > .ui-file-tree__row::after {
+  background: var(--ip-color-file-tree-del-background);
+}
+.lh-rich-markdown .ui-file-tree li[data-status=modified] > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-status=modified] > details > .ui-file-tree__row::after {
+  background: var(--ip-color-file-tree-mod-background);
+}
+.lh-rich-markdown .ui-file-tree li[data-highlighted=true] > .ui-file-tree__row::after,
+.lh-rich-markdown .ui-file-tree li[data-highlighted=true] > details > .ui-file-tree__row::after {
+  background: var(--ip-color-code-line-highlight-background);
+}
+.lh-rich-markdown .ui-file-tree li[data-status=added] .ui-file-tree__status-symbol {
+  color: var(--ip-color-file-tree-add-symbol);
+}
+.lh-rich-markdown .ui-file-tree li[data-status=removed] .ui-file-tree__status-symbol {
+  color: var(--ip-color-file-tree-del-symbol);
+}
+.lh-rich-markdown .ui-file-tree li[data-status=modified] .ui-file-tree__status-symbol {
+  color: var(--ip-color-file-tree-mod-symbol);
+}
+.lh-rich-markdown .ui-file-tree__status-symbol {
+  font-weight: var(--ip-font-weight-semibold);
+  inline-size: var(--ip-space-2);
+  inset-block-start: 50%;
+  inset-inline-start: var(--ip-space-1);
+  position: absolute;
+  text-align: center;
+  transform: translateY(-50%);
+}
+.lh-rich-markdown .ui-file-tree__sr-only {
+  clip: rect(0 0 0 0);
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}
+.lh-rich-markdown .ui-file-tree__row .line-callout {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.lh-rich-markdown .ui-code-block {
+  background: var(--ip-color-code-background);
+  border: 1px solid var(--ip-color-code-border);
+  border-radius: var(--ip-radius-md);
+  color: var(--ip-color-code-foreground);
+  margin: 0;
+  overflow: hidden;
+}
+.lh-rich-markdown .ui-code-block__header {
+  align-items: center;
+  background: var(--ip-color-muted);
+  border-bottom: 1px solid var(--ip-color-code-border);
+  color: var(--ip-color-muted-foreground);
+  display: flex;
+  font-family: var(--ip-font-family-mono);
+  font-size: var(--ip-font-size-xs);
+  gap: var(--ip-space-2);
+  justify-content: space-between;
+  min-height: var(--ip-code-header-height);
+  padding: 0 var(--ip-code-header-padding-inline);
+}
+.lh-rich-markdown .ui-code-block__filename {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--ip-space-1);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lh-rich-markdown .ui-code-block__lang-icon {
+  color: var(--ip-color-muted-foreground);
+  display: inline-block;
+  flex: none;
+  height: 13px;
+  width: 13px;
+}
+.lh-rich-markdown .ui-code-block__pre {
+  background: transparent;
+  color: inherit;
+  font-family: var(--ip-font-family-mono);
+  font-size: var(--ip-font-size-code);
+  line-height: var(--ip-line-height-code);
+  margin: 0;
+  overflow-x: auto;
+  padding: var(--ip-code-block-padding);
+}
+/* Shiki emits its own <pre class="shiki"><code>…</code></pre>; fold it into our
+     chrome (header/border/padding already come from .ui-code-block__pre / __header). */
+.lh-rich-markdown .ui-code-block__pre pre.shiki {
+  --code-line-bleed: var(--ip-code-block-padding);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  margin: 0;
+  overflow: visible;
+  padding: 0;
+}
+.lh-rich-markdown .ui-code-block__pre pre.shiki code {
+  display: block;
+}
+/* 1lhは親CodeBlockの現在のline-heightそのもの。固定1.5emにせず媒体の既存行送りへ追従する。 */
+.lh-rich-markdown .ui-code-block__pre pre.shiki .line--highlight {
+  font-weight: var(--ip-font-weight-bold);
+}
+/* has-diff: reserve gutter space on every line (not only add/del) so the code column stays
+     aligned across annotated and plain rows, then float the +/- glyph in that reserved space
+     with a negative-margin ::before instead of absolute positioning — it stays in normal inline
+     flow, so it lines up with the rest of the row's text automatically. */
+.lh-rich-markdown .ui-code-block__pre pre.shiki.has-diff {
+  --code-gutter-width: var(--ip-space-4);
+}
+.lh-rich-markdown .ui-code-block__pre pre.shiki.has-diff .line {
+  padding-left: calc(var(--ip-code-block-padding));
+}
+.lh-rich-markdown .ui-code-block__pre pre.shiki .line--add::before,
+.lh-rich-markdown .ui-code-block__pre pre.shiki .line--del::before {
+  display: inline-block;
+  font-weight: var(--ip-font-weight-semibold);
+  margin-left: calc(var(--code-gutter-width) * -1);
+  text-align: center;
+  width: var(--code-gutter-width);
+}
+.lh-rich-markdown .ui-code-block__pre pre.shiki .line--add::before {
+  color: var(--ip-color-code-line-add-symbol);
+  content: "+";
+  margin-left: -15px;
+}
+.lh-rich-markdown .ui-code-block__pre pre.shiki .line--del::before {
+  color: var(--ip-color-code-line-del-symbol);
+  content: "-";
+  margin-left: -15px;
+}
+/* has-focus: dim every line except the focused ones; hovering the block restores full
+     opacity. Web-only capability, done entirely in CSS — no client-side script involved. */
+.lh-rich-markdown .ui-code-block__pre pre.shiki.has-focus .line {
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+.lh-rich-markdown .ui-code-block__pre pre.shiki.has-focus .line:not(.line--focus) {
+  filter: blur(2px);
+  opacity: 0.45;
+}
+.lh-rich-markdown .ui-code-block__pre pre.shiki.has-focus:hover .line:not(.line--focus) {
+  filter: blur(0);
+  opacity: 1;
+}
+/* FileTreeはcanonical code-line DOM外なのでcallout geometryをここで互換維持する。 */
+.lh-rich-markdown .ui-file-tree__row .line-callout {
+  align-items: baseline;
+  display: inline-flex;
+  gap: 0;
+  margin-inline-start: var(--ip-space-2);
+}
+.lh-rich-markdown .ui-file-tree__row .line-callout__arrow {
+  color: var(--ip-color-code-callout-border);
+  /* JetBrains Monoの`<--`リガチャで矢印らしく描画するため、通常はコード全体で無効化されて
+     いないリガチャをここでも明示的に有効化しておく（将来コード側の既定が変わっても影響を
+     受けないようにする）。 */
+  font-family: var(--ip-font-family-code-callout-arrow);
+  font-variant-ligatures: normal;
+}
+.lh-rich-markdown .ui-file-tree__row .line-callout__label {
+  background: var(--ip-color-code-callout-background);
+  border: var(--ip-border-width-default) solid var(--ip-color-code-callout-border);
+  border-radius: var(--ip-radius-sm);
+  color: var(--ip-color-code-callout-foreground);
+  display: inline-block;
+  font-weight: var(--ip-font-weight-bold);
+  /* overflow-wrapはURL等、空白を含まない連続文字列でも折り返す。 */
+  overflow-wrap: anywhere;
+  padding: var(--ip-code-inline-padding-y) var(--ip-code-inline-padding-x);
+  white-space: normal;
+}
+/* CodeBlock(Shiki HAST)とExecPair(React)が共有するcanonical行DOM。外枠と色aliasは各componentが担当する。 */
+.lh-rich-markdown .ui-code-lines {
+  display: block;
+}
+.lh-rich-markdown .ui-code-lines .code-line-group {
+  display: block;
+}
+.lh-rich-markdown .ui-code-lines .line {
+  box-sizing: border-box;
+  display: inline-block;
+  margin-inline: calc(var(--code-line-bleed) * -1);
+  padding-inline: var(--code-line-bleed);
+  vertical-align: top;
+  width: calc(100% + var(--code-line-bleed) * 2);
+}
+.lh-rich-markdown .ui-code-lines .line[data-code-empty-line=true] {
+  min-height: 1lh;
+}
+.lh-rich-markdown .ui-code-lines .line .line-callout {
+  align-items: baseline;
+  display: inline-flex;
+  gap: 0;
+  margin-inline-start: var(--ip-space-2);
+}
+.lh-rich-markdown .ui-code-lines .line .line-callout__indent {
+  flex: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  tab-size: inherit;
+  white-space: pre;
+}
+.lh-rich-markdown .ui-code-lines .line-callout__arrow {
+  color: var(--ip-color-code-callout-border);
+  font-family: var(--ip-font-family-code-callout-arrow);
+  font-variant-ligatures: normal;
+}
+.lh-rich-markdown .ui-code-lines .line-callout__label {
+  background: var(--ip-color-code-callout-background);
+  border: var(--ip-border-width-default) solid var(--ip-color-code-callout-border);
+  border-radius: var(--ip-radius-sm);
+  color: var(--ip-color-code-callout-foreground);
+  display: inline-block;
+  font-weight: var(--ip-font-weight-bold);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  padding: var(--ip-code-inline-padding-y) var(--ip-code-inline-padding-x);
+  white-space: normal;
+}
+.lh-rich-markdown .ui-code-lines .line-callout--turn {
+  align-items: flex-start;
+  box-sizing: border-box;
+  display: inline-flex;
+  gap: 0;
+  margin-inline: calc(var(--code-line-bleed) * -1);
+  padding-inline: var(--code-line-bleed);
+  vertical-align: top;
+  width: calc(100% + var(--code-line-bleed) * 2);
+}
+.lh-rich-markdown .ui-code-lines .line-callout--turn .line-callout__indent {
+  flex: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  tab-size: inherit;
+  white-space: pre;
+}
+.lh-rich-markdown .ui-code-lines :is(.line--add, .line-callout--add) {
+  background: var(--code-line-add-background, var(--ip-color-code-line-add-background));
+}
+.lh-rich-markdown .ui-code-lines :is(.line--del, .line-callout--del) {
+  background: var(--code-line-del-background, var(--ip-color-code-line-del-background));
+}
+.lh-rich-markdown .ui-code-lines :is(.line--highlight, .line-callout--highlight) {
+  background: var(--code-line-highlight-background, var(--ip-color-code-line-highlight-background));
+}
+.lh-rich-markdown .ui-code-lines :is(.line--error, .line-callout--error) {
+  background: var(--code-line-error-background, var(--ip-color-code-line-error-background));
+}
+.lh-rich-markdown .ui-code-lines :is(.line--warning, .line-callout--warning) {
+  background: var(--code-line-warning-background, var(--ip-color-code-line-warning-background));
+}
+.lh-rich-markdown .ui-code-lines .line-callout--turn .line-callout__icon {
+  color: var(--ip-color-code-callout-border);
+  flex: none;
+  line-height: 1;
+}
+.lh-rich-markdown .ui-code-lines .line-callout--turn .line-callout__label {
+  margin-inline-start: calc(var(--ip-space-1) * -1);
+  position: relative;
+}
+.lh-rich-markdown .ui-code-lines .line-callout--turn .line-callout__icon svg {
+  display: inline-block;
+  height: 1em;
+  width: 1em;
+}
+/* 下向きの折返しはラベルのベースライン側へ寄せる。 */
+.lh-rich-markdown .ui-code-lines .line-callout--before .line-callout__icon {
+  transform: translateY(var(--ip-space-2));
+}
+.lh-rich-markdown .ui-mermaid {
+  margin: 0;
+}
+.lh-rich-markdown .ui-mermaid__canvas {
+  background: var(--ip-color-muted);
+  border: 1px solid var(--ip-color-border);
+  border-radius: var(--ip-radius-lg);
+  max-width: 100%;
+  overflow-x: auto;
+  padding: var(--ip-space-4);
+}
+.lh-rich-markdown .ui-mermaid__svg > svg {
+  display: block;
+  height: auto;
+  margin: 0 auto;
+  max-width: 100%;
+}
+.lh-rich-markdown .ui-mermaid__fallback {
+  margin: 0;
+  min-width: max-content;
+  white-space: pre;
+}
+.lh-rich-markdown .ui-mermaid__fallback code {
+  background: transparent;
+  font-family: var(--ip-font-family-mono);
+  font-size: var(--ip-font-size-code-block);
+  line-height: var(--ip-line-height-code);
+  padding: 0;
+}
+.lh-rich-markdown .ui-mermaid__error {
+  color: var(--ip-color-muted-foreground);
+  font-size: var(--ip-font-size-sm);
+  line-height: var(--ip-line-height-ui);
+  margin: var(--ip-space-2) 0 0;
+}
+.lh-rich-markdown .ui-mermaid figcaption {
+  color: var(--ip-color-muted-foreground);
+  font-size: var(--ip-font-size-sm);
+  line-height: var(--ip-line-height-ui);
+  margin-top: var(--ip-figure-caption-gap);
+}
+@media (max-width: 520px) {
+  .lh-rich-markdown .ui-mermaid__canvas {
+    padding: var(--ip-space-3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lh-rich-markdown .ui-mermaid__svg > svg {
+    transition: none;
+  }
+}
+.lh-rich-markdown .copy-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ip-radius-sm);
+  color: var(--ip-color-muted-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--ip-font-family-sans);
+  font-size: var(--ip-font-size-xs);
+  gap: var(--ip-space-1);
+  min-height: 28px;
+  padding: var(--ip-space-1) var(--ip-space-2);
+}
+.lh-rich-markdown .copy-button:hover {
+  background: var(--ip-color-secondary-hover);
+  color: var(--ip-color-foreground);
+}
+/* Wire Shiki's `css-variables` theme to our syntax tokens (packages/md-react/src/highlight.ts),
+     so token colors stay in tokens/imagepit-web.css instead of Shiki's own hexes. */
+.lh-rich-markdown {
+  --shiki-background: transparent;
+  --shiki-foreground: var(--ip-color-code-foreground);
+  --shiki-token-comment: var(--ip-color-syntax-comment);
+  --shiki-token-keyword: var(--ip-color-syntax-keyword);
+  --shiki-token-string: var(--ip-color-syntax-string);
+  --shiki-token-string-expression: var(--ip-color-syntax-string);
+  --shiki-token-constant: var(--ip-color-syntax-constant);
+  --shiki-token-function: var(--ip-color-syntax-function);
+  --shiki-token-parameter: var(--ip-color-syntax-parameter);
+  --shiki-token-punctuation: var(--ip-color-syntax-punctuation);
+  --shiki-token-link: var(--ip-color-syntax-string);
+}
+/* Fumadocsの入れ子span用syntax色にも注釈の意味色を渡す。 */
+.lh-rich-markdown .ui-code-lines .line-callout {
+  --shiki-light: var(--ip-color-code-callout-foreground);
+  --shiki-dark: var(--ip-color-code-callout-foreground);
+}
+.lh-rich-markdown .ui-file-tree, .lh-rich-markdown .ui-code-block, .lh-rich-markdown .ui-mermaid {
+  margin-block: var(--ip-prose-embedded-block-margin);
+}
+.lh-rich-markdown .ui-steps {
+  list-style: none;
+  margin-block: var(--ip-prose-embedded-block-margin);
+  padding-inline-start: 0;
+}
+.lh-rich-markdown .ui-file-tree summary {
+  list-style: none;
+}
+.lh-rich-markdown .ui-file-tree summary::-webkit-details-marker {
+  display: none;
+}
+.lh-rich-markdown .ui-file-tree__row .line-callout__arrow, .lh-rich-markdown .ui-code-lines .line-callout__arrow {
+  font-family: inherit;
+  font-size: 0;
+}
+.lh-rich-markdown .ui-file-tree__row .line-callout__arrow::before, .lh-rich-markdown .ui-code-lines .line-callout__arrow::before {
+  content: "⟵";
+  font-size: var(--ip-font-size-code);
+}

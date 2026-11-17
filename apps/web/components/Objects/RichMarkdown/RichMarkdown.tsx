@@ -3,6 +3,7 @@
 import { memo, useMemo } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Box, CircleAlert, Info, Lightbulb, NotebookPen, TriangleAlert } from 'lucide-react'
 import type { Blockquote, BlockContent, PhrasingContent, Root } from 'mdast'
 import PeleDiagram from './PeleDiagram'
 import { AnnotatedCode, FileTree } from './vendor/blocks'
@@ -14,18 +15,29 @@ export type TextFormat = 'plain' | 'markdown'
 export const textFormat = (value: unknown): TextFormat => value === 'markdown' ? 'markdown' : 'plain'
 export const MAX_MARKDOWN_LENGTH = 100_000
 
-const CALLOUTS = new Set(['note', 'info', 'important', 'warning', 'caution', 'tip', 'syntax', 'danger', 'chapter-point', 'section-summary', 'chapter-summary', 'keyword'])
+const CALLOUTS = new Map([
+  ['note', { tone: 'info', label: 'NOTE', Icon: NotebookPen }],
+  ['info', { tone: 'info', label: 'INFO', Icon: Info }],
+  ['important', { tone: 'warning', label: '重要', Icon: CircleAlert }],
+  ['warning', { tone: 'warning', label: '警告', Icon: TriangleAlert }],
+  ['caution', { tone: 'warning', label: '注意', Icon: TriangleAlert }],
+  ['tip', { tone: 'success', label: 'TIP', Icon: Lightbulb }],
+  ['syntax', { tone: 'syntax', label: '構文', Icon: Box }],
+  ['danger', { tone: 'destructive', label: '危険', Icon: CircleAlert }],
+  ['chapter-point', { tone: 'info', label: 'この章のポイント', Icon: Info }],
+  ['section-summary', { tone: 'info', label: 'このセクションのまとめ', Icon: Info }],
+  ['chapter-summary', { tone: 'info', label: 'この章のまとめ', Icon: Info }],
+  ['keyword', { tone: 'syntax', label: '用語', Icon: Box }],
+])
 
-function paragraph(children: PhrasingContent[]): BlockContent {
-  return { type: 'paragraph', children }
+type RichBlock = Blockquote['children'][number]
+
+function box(hName: string, className: string, children: RichBlock[], hProperties = {}): Blockquote {
+  return { type: 'blockquote', children, data: { hName, hProperties: { className: className.split(' '), ...hProperties } } }
 }
 
-type RichBlock = Blockquote["children"][number]
-
-function box(className: string, children: RichBlock[]): Blockquote {
-  // A root can contain definitions. Block quotes can too, and hName maps
-  // this authored block to a visually distinct div without emitting raw HTML.
-  return { type: 'blockquote', children, data: { hName: 'div', hProperties: { className: className.split(" ") } } }
+function label(hName: string, className: string, children: PhrasingContent[], hProperties = {}): BlockContent {
+  return { type: 'paragraph', children, data: { hName, hProperties: { className: [className], ...hProperties } } }
 }
 
 export function richMarkdownTree(source: string) {
@@ -41,23 +53,31 @@ export function richMarkdownTree(source: string) {
       if (node.type === 'imagepitDirective') {
         if (node.name === 'step') {
           const { leading, steps } = collectMarkdownSteps(node.children)
-          return [box('lh-rich-steps', [
+          return [
             ...convert(leading),
-            ...steps.map((step, index) => {
+            box('ol', 'ui-steps', steps.map((step, index) => {
               const { main, aside } = splitMarkdownStepBody(step.body)
-              return box('lh-rich-step', [
-                paragraph([{ type: 'strong', children: [{ type: 'text', value: `${index + 1}. ` }, ...step.title] }]),
-                box('lh-rich-step-body', [box('lh-rich-step-main', convert(main)), ...(aside ? [box('lh-rich-step-aside', convert(aside))] : [])]),
+              const content = aside ? [
+                box('div', 'ui-step__main', convert(main)),
+                box('div', 'ui-step__aside', convert(aside)),
+              ] : convert(main)
+              return box('li', 'ui-step', [
+                label('span', 'ui-step__marker', [{ type: 'text', value: String(index + 1) }], { 'aria-hidden': true }),
+                box('div', 'ui-step__content', [
+                  label('h3', 'ui-step__title', step.title),
+                  box('div', aside ? 'ui-step__body ui-step__body--columns' : 'ui-step__body', content),
+                ]),
               ])
-            }),
-          ])]
+            })),
+          ]
         }
-        if (!CALLOUTS.has(node.name)) return convert(node.children)
-        const label = node.title || node.name
-        return [box(`lh-rich-callout lh-rich-callout-${node.name}`, [
-          paragraph([{ type: 'strong', children: [{ type: 'text', value: label }] }]),
-          ...convert(node.children),
-        ])]
+        const callout = CALLOUTS.get(node.name)
+        if (!callout) return convert(node.children)
+        const title = node.title || callout.label
+        return [box('aside', `rw-learning-callout rw-learning-callout--${callout.tone}`, [
+          label('p', 'rw-learning-callout__title', [{ type: 'text', value: title }], { 'data-callout-title': node.name }),
+          box('div', 'rw-learning-callout__body', convert(node.children)),
+        ], { 'aria-label': title, 'data-variant': node.name })]
       }
       if (node.type === 'imagepitTocMarker' || node.type === 'imagepitCodeTree' || node.type === 'imagepitCustomDirective') return []
       if (node.type === 'code' && node.meta) {
@@ -86,6 +106,14 @@ const RichMarkdown = memo(function RichMarkdown({ source, format, copyCode = tru
     if (format !== 'markdown' || source.length > MAX_MARKDOWN_LENGTH) return null
     const { tree, fileTrees } = richMarkdownTree(source)
     const components: Components = {
+      p({ node, children, ...props }) {
+        const variant = node?.properties['data-callout-title']
+        const Icon = typeof variant === 'string' ? CALLOUTS.get(variant)?.Icon : undefined
+        return <p {...props}>
+          {Icon && <span className="rw-learning-callout__icon" aria-hidden="true"><Icon /></span>}
+          {children}
+        </p>
+      },
       pre({ node, children }) {
         const code = node?.children.find(child => child.type === 'element' && child.tagName === 'code')
         if (!code || code.type !== 'element') return <pre>{children}</pre>

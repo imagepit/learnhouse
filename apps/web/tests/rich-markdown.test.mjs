@@ -14,7 +14,7 @@ test('renders callouts, steps with divider and both file tree forms', () => {
     '', '```tree title="Layout"', '.', '└── ++ docs.md <--[Read me]', '```',
   ].join('\n')
   const html = renderToStaticMarkup(createElement(RichMarkdown, { source: markdown, format: 'markdown' }))
-  for (const text of ['lh-rich-callout-note', 'lh-rich-step-aside', 'Side text', 'root/', 'README.md', 'Layout', 'Read me']) {
+  for (const text of ['rw-learning-callout--info', 'rw-learning-callout__icon', 'ui-step__marker', 'ui-step__aside', 'Side text', '<details open', 'ui-file-tree__icon', 'README.md', 'Layout', 'Read me']) {
     expect(html).toContain(text)
   }
 })
