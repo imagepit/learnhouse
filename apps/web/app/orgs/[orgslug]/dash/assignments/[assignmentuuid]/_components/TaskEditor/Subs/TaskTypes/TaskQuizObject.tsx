@@ -71,6 +71,8 @@ type QuizSubmitSchema = {
 
 type TaskQuizObjectProps = {
     view: 'teacher' | 'student' | 'grading';
+    sequential?: boolean;
+    pastDue?: boolean;
     user_id?: string; // Only for read-only view
     onGraded?: () => void; // Notify parent (grading view) after an inline grade
     assignmentTaskUUID?: string;
@@ -82,7 +84,7 @@ type Submission = {
     answer: boolean;
 };
 
-function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskQuizObjectProps) {
+function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded, sequential = false, pastDue = false }: TaskQuizObjectProps) {
     const { t } = useTranslation()
     const session = useLHSession() as any;
     const access_token = session?.data?.tokens?.access_token;
@@ -272,6 +274,47 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskQui
     // True once the learner has interacted, so an async hydration that resolves
     // after the first edit can't clobber it.
     const interactedRef = React.useRef(false);
+    const [submissionHydrated, setSubmissionHydrated] = useState(false);
+    const [questionIndex, setQuestionIndex] = useState<number | null>(null);
+    const [advancing, setAdvancing] = useState(false);
+    const headingRef = React.useRef<HTMLHeadingElement>(null);
+    const focusNext = React.useRef(false);
+    const sequentialActive = view === 'student' && sequential && !answersLocked;
+    const hasAnswer = (question: QuizSchema) => question.options.some(option =>
+        isOptionSelected(question.questionUUID, option.optionUUID)
+    );
+    const currentQuestion = questionIndex === null ? undefined : questions[questionIndex];
+
+    useEffect(() => {
+        if (!sequentialActive || questionIndex !== null || !assignmentTaskOutsideProvider ||
+            !submissionHydrated) return;
+        const unanswered = questions.findIndex(question => !question.options.some(option =>
+            userSubmissions.submissions.some(answer => answer.answer &&
+                answer.questionUUID === question.questionUUID && answer.optionUUID === option.optionUUID)
+        ));
+        setQuestionIndex(unanswered === -1 ? questions.length : unanswered);
+    }, [sequentialActive, questionIndex, assignmentTaskOutsideProvider, submissionHydrated, questions, userSubmissions]);
+
+    useEffect(() => {
+        if (focusNext.current) {
+            headingRef.current?.focus();
+            focusNext.current = false;
+        }
+    }, [questionIndex]);
+
+    async function advance(flush: () => Promise<boolean>) {
+        if (!currentQuestion || questionIndex === null || !hasAnswer(currentQuestion) || advancing || pastDue) return;
+        setAdvancing(true);
+        try {
+            if (await flush()) {
+                focusNext.current = true;
+                setQuestionIndex(questionIndex + 1);
+            }
+        } finally {
+            setAdvancing(false);
+        }
+    }
+
 
     async function chooseOption(qIndex: number, oIndex: number) {
         interactedRef.current = true;
@@ -617,6 +660,7 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskQui
             if (submissionHydratedForRef.current !== assignmentTaskUUID && taskSubmissionsMap !== null) {
                 hydrateSubmissionFromBatch(interactedRef.current);
                 submissionHydratedForRef.current = assignmentTaskUUID ?? null;
+                setSubmissionHydrated(true);
             }
         }
 
@@ -630,7 +674,31 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskQui
 
     if (questions && questions.length >= 0) {
         return (
-            <AssignmentBoxUI submitFC={submitFC} saveFC={saveFC} gradeFC={gradeFC} gradeCustomFC={gradeCustomFC} view={view} currentPoints={userSubmissionObject?.grade} currentFeedback={userSubmissionObject?.task_submission_grade_feedback} maxPoints={assignmentTaskOutsideProvider?.max_grade_value} dirtyValue={serializeSelectedOptions(userSubmissions.submissions)} savedValue={serializeSelectedOptions(initialUserSubmissions.submissions)} taskUUID={assignmentTaskUUID} type="quiz" autoGradable={true}>
+            <AssignmentBoxUI submitFC={submitFC} saveFC={saveFC} gradeFC={gradeFC} gradeCustomFC={gradeCustomFC} view={view} currentPoints={userSubmissionObject?.grade} currentFeedback={userSubmissionObject?.task_submission_grade_feedback} maxPoints={assignmentTaskOutsideProvider?.max_grade_value} dirtyValue={serializeSelectedOptions(userSubmissions.submissions)} savedValue={serializeSelectedOptions(initialUserSubmissions.submissions)} taskUUID={assignmentTaskUUID} type="quiz" autoGradable={true}
+                canSubmit={sequentialActive ? () => questionIndex !== null && !advancing && !pastDue && questions.length > 1 && questions.every(hasAnswer) : undefined}
+                renderStudentControls={sequentialActive && currentQuestion ? flush => (
+                    <div className="mt-5 flex justify-end">
+                        <button type="button" disabled={advancing || pastDue || !hasAnswer(currentQuestion)}
+                            onClick={() => void advance(flush)}
+                            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                            {questionIndex === questions.length - 1
+                                ? t('assignments.quiz.save_last_answer')
+                                : t('assignments.quiz.next_question')}
+                        </button>
+                    </div>
+                ) : undefined}>
+                {sequentialActive && questionIndex !== null && (
+                    <div className="mb-5 space-y-2">
+                        <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold">
+                            {currentQuestion
+                                ? t('assignments.quiz.question_position', { current: questionIndex + 1, total: questions.length })
+                                : t('assignments.quiz.all_answers_saved')}
+                        </h3>
+                        <progress className="h-2 w-full accent-teal-600" max={questions.length}
+                            value={Math.min(questionIndex + 1, questions.length)}
+                            aria-label={t('assignments.quiz.question_position', { current: Math.min(questionIndex + 1, questions.length), total: questions.length })} />
+                    </div>
+                )}
                 {view === 'teacher' && (
                     <div className="flex flex-wrap gap-2 items-center mb-4 py-2 px-3 bg-white rounded-md nice-shadow">
                         <p className="text-xs font-bold text-slate-500">{t('assignments.quiz.grading_mode_label')}</p>
@@ -661,12 +729,13 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskQui
                 )}
                 <div className="flex flex-col space-y-6">
                     {questions && questions.map((question, qIndex) => {
+                        if (sequentialActive && qIndex !== questionIndex) return null;
                         const responseType = questionResponseType(question);
                         const isSingleResponse = responseType === QUIZ_RESPONSE_SINGLE;
                         const hasNoCorrectOption = correctOptionCount(question) === 0;
                         const optionsGroupLabel = `${question.questionText || t('assignments.quiz.question_fallback_label', { defaultValue: 'Question' })}: ${isSingleResponse ? t('assignments.quiz.select_one') : t('assignments.quiz.select_all_that_apply')}`;
                         return (
-                        <div key={qIndex} className="flex flex-col space-y-1.5">
+                        <div key={question.questionUUID || qIndex} className="flex flex-col space-y-1.5">
                             <div className="flex space-x-2 items-center">
                                 {view === 'teacher' ? (
                                     <div className="min-w-0 flex-1">
@@ -748,7 +817,7 @@ function TaskQuizObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskQui
                                         text={option.text}
                                         single={isSingleResponse}
                                         selected={isOptionSelected(question.questionUUID, option.optionUUID)}
-                                        locked={answersLocked}
+                                        locked={answersLocked || (sequentialActive && (advancing || pastDue))}
                                         verdict={revealAnswerKey ? (option.assigned_right_answer ? 'correct' : 'wrong') : undefined}
                                         onChoose={() => chooseOption(qIndex, oIndex)}
                                         correctLabel={t('assignments.quiz.correct_answer')}

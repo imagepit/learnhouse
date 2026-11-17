@@ -58,6 +58,10 @@ export default function AssignmentTools(props: {
   const submitForGradingUI = async () => {
     if (props.assignment) {
       if (isSubmitting) return
+      if (!dirtyTasks.canSubmit()) {
+        toast.error(t('assignments.quiz.complete_before_submit'))
+        return
+      }
       setIsSubmitting(true)
       try {
         // Persist any answers the learner selected but didn't manually save, so
@@ -68,6 +72,7 @@ export default function AssignmentTools(props: {
           toast.error(t('assignments.failed_submit_assignment'))
           return
         }
+        if (!dirtyTasks.canSubmit()) return
         const res = await submitAssignmentForGrading(
           props.assignment?.assignment_uuid,
           session.data?.tokens?.access_token
@@ -90,6 +95,8 @@ export default function AssignmentTools(props: {
         else {
           toast.error(t('assignments.failed_submit_assignment'))
         }
+      } catch {
+        toast.error(t('assignments.failed_submit_assignment'))
       } finally {
         setIsSubmitting(false)
       }

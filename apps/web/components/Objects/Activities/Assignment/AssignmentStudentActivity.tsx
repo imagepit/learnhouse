@@ -151,6 +151,18 @@ function AssignmentStudentActivity() {
 
   const tasks: any[] = useMemo(() => (assignments ? sortTasksByOrder(assignments?.assignment_tasks) : []), [assignments])
   const isQuiz = tasks.length > 0 && tasks.every((task) => task.assignment_type === 'QUIZ')
+  const quizQuestions = tasks.length === 1 && isQuiz && Array.isArray(tasks[0].contents?.questions)
+    ? tasks[0].contents.questions
+    : []
+  const sequentialQuiz = quizQuestions.length > 1
+  const savedQuizAnswers = sequentialQuiz
+    ? taskSubmissionsMap?.[tasks[0].assignment_task_uuid]?.task_submission?.submissions
+    : undefined
+  const savedQuizCount = sequentialQuiz ? quizQuestions.filter((question: any) =>
+    question.options?.some((option: any) => Array.isArray(savedQuizAnswers) && savedQuizAnswers.some((answer: any) =>
+      answer.answer === true && answer.questionUUID === question.questionUUID && answer.optionUUID === option.optionUUID
+    ))
+  ).length : 0
   const totalPoints = tasks.reduce((sum, task) => sum + (Number(task.max_grade_value) || 0), 0)
   const answeredCount = tasks.filter((task) =>
     taskSubmissionHasAnswer(taskSubmissionsMap?.[task.assignment_task_uuid])
@@ -186,7 +198,9 @@ function AssignmentStudentActivity() {
           ? { label: t('assignments.status_in_progress', { defaultValue: 'In progress' }), tone: 'bg-sky-50 text-sky-700', Icon: PencilLine }
           : { label: t('assignments.status_not_started', { defaultValue: 'Not started' }), tone: 'bg-neutral-100 text-neutral-600', Icon: Circle }
 
-  const progress = tasks.length > 0 ? Math.round((answeredCount / tasks.length) * 100) : 0
+  const progressTotal = sequentialQuiz ? quizQuestions.length : tasks.length
+  const progressAnswered = sequentialQuiz ? savedQuizCount : answeredCount
+  const progress = progressTotal > 0 ? Math.round((progressAnswered / progressTotal) * 100) : 0
   const metaItem = 'flex items-center gap-1.5'
 
   const solutionPanel = solutionUnlocked && (solutionText || solutionFile) && (
@@ -235,7 +249,7 @@ function AssignmentStudentActivity() {
               <div className='min-w-0'>
                 <p className='text-[11px] font-semibold uppercase tracking-wider text-neutral-400'>{t('activities.assignment')}</p>
                 <p className='text-sm font-semibold text-neutral-900 tabular-nums'>
-                  {t('assignments.answered_progress', { answered: answeredCount, total: tasks.length, defaultValue: '{{answered}} of {{total}} answered' })}
+                  {t('assignments.answered_progress', { answered: progressAnswered, total: progressTotal, defaultValue: '{{answered}} of {{total}} answered' })}
                 </p>
               </div>
             </div>
@@ -450,7 +464,7 @@ function AssignmentStudentActivity() {
                 answers as a stale saved baseline (which would submit empty ->
                 0% on the next attempt). */}
             <div className='px-4 sm:px-5 pt-4 pb-4 sm:pb-5'>
-              {task.assignment_type === 'QUIZ' && <TaskQuizObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} />}
+              {task.assignment_type === 'QUIZ' && <TaskQuizObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} sequential={sequentialQuiz} pastDue={isPastDue} />}
               {task.assignment_type === 'FILE_SUBMISSION' && <TaskFileObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} />}
               {task.assignment_type === 'FORM' && <TaskFormObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} />}
               {task.assignment_type === 'CODE' && <TaskCodeObject key={`${task.assignment_task_uuid}-${currentAttempt}`} view='student' assignmentTaskUUID={task.assignment_task_uuid} />}
@@ -465,12 +479,12 @@ function AssignmentStudentActivity() {
 
       {/* Where the work ends: hand it in, or see where it stands. The button
           opens the same confirmation as the activity bar's submit control. */}
-      {tasks.length > 0 && isAwaitingSubmission && !isPastDue && (
+      {tasks.length > 0 && isAwaitingSubmission && !isPastDue && (!sequentialQuiz || savedQuizCount === quizQuestions.length) && (
         <div className='flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl bg-neutral-900 p-4 sm:p-5 text-white'>
           <div className='min-w-0 flex-1'>
             <p className='text-base font-semibold'>{t('assignments.handin_ready_title', { defaultValue: 'Ready to hand in?' })}</p>
             <p className='mt-0.5 text-sm text-neutral-300'>
-              {t('assignments.answered_progress', { answered: answeredCount, total: tasks.length, defaultValue: '{{answered}} of {{total}} answered' })}
+              {t('assignments.answered_progress', { answered: progressAnswered, total: progressTotal, defaultValue: '{{answered}} of {{total}} answered' })}
               {' · '}
               {t('assignments.handin_ready_body', { defaultValue: 'Your answers save automatically.' })}
             </p>
