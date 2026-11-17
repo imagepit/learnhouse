@@ -4,6 +4,12 @@
 /** Fired to open the hand-in confirmation from the inline panel at the end of the tasks. */
 export const ASSIGNMENT_SUBMIT_EVENT = 'lh:assignment-submit'
 
+export function getSequentialQuizQuestions(tasks: readonly { assignment_type: string; contents?: { questions?: unknown } }[] | undefined) {
+  if (!Array.isArray(tasks) || tasks.length !== 1 || tasks[0].assignment_type !== 'QUIZ') return []
+  const questions = tasks[0].contents?.questions
+  return Array.isArray(questions) && questions.length > 1 ? questions : []
+}
+
 export const answerInputClass =
   'w-full h-12 md:h-11 rounded-xl border border-neutral-200 bg-white px-4 text-base md:text-sm text-neutral-900 ' +
   'placeholder:text-neutral-400 outline-none transition-[border-color,box-shadow] ' +

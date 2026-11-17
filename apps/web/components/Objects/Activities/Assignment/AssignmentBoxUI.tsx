@@ -32,6 +32,8 @@ type AssignmentBoxProps = {
     // Identifies this task in the dirty-task registry so "Submit for grading"
     // can flush its unsaved answers. Omit outside the learner activity flow.
     taskUUID?: string
+    canSubmit?: () => boolean
+    renderStudentControls?: (flush: () => Promise<boolean>) => React.ReactNode
     children: React.ReactNode
 }
 
@@ -41,7 +43,7 @@ type AssignmentBoxProps = {
 const isAutoFeedback = (s?: string) =>
     !!s && (/^Auto graded by system$/.test(s) || /^Graded by teacher : @/.test(s))
 
-function AssignmentBoxUI({ type, view, currentPoints, currentFeedback, maxPoints, saveFC, submitFC, gradeFC, gradeCustomFC, autoGradable, dirtyValue, savedValue, taskUUID, children }: AssignmentBoxProps) {
+function AssignmentBoxUI({ type, view, currentPoints, currentFeedback, maxPoints, saveFC, submitFC, gradeFC, gradeCustomFC, autoGradable, dirtyValue, savedValue, taskUUID, canSubmit, renderStudentControls, children }: AssignmentBoxProps) {
     const { t } = useTranslation()
     // Grading view manual input. Pre-filled from the server-side currentPoints
     // so teachers can tweak an existing grade instead of retyping it.
@@ -84,12 +86,18 @@ function AssignmentBoxUI({ type, view, currentPoints, currentFeedback, maxPoints
     const dirtyTasks = useAssignmentDirtyTasks()
     const flushRef = React.useRef(auto.flush)
     const getDirtyRef = React.useRef(auto.getIsDirty)
-    React.useEffect(() => { flushRef.current = auto.flush; getDirtyRef.current = auto.getIsDirty })
+    const canSubmitRef = React.useRef(canSubmit)
+    React.useEffect(() => {
+        flushRef.current = auto.flush
+        getDirtyRef.current = auto.getIsDirty
+        canSubmitRef.current = canSubmit
+    })
     React.useEffect(() => {
         if (view !== 'student' || !taskUUID) return
         dirtyTasks.register(taskUUID, {
             getIsDirty: () => getDirtyRef.current(),
             flush: () => flushRef.current(),
+            canSubmit: () => canSubmitRef.current?.() ?? true,
         })
         return () => dirtyTasks.unregister(taskUUID)
     }, [view, taskUUID, dirtyTasks])
@@ -168,6 +176,7 @@ function AssignmentBoxUI({ type, view, currentPoints, currentFeedback, maxPoints
         return (
             <div className='flex flex-col gap-3'>
                 {children}
+                {renderStudentControls?.(auto.flush)}
                 {saveStatus && <div className='flex justify-end'>{saveStatus}</div>}
             </div>
         )

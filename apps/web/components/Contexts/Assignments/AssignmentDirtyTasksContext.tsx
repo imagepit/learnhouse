@@ -17,12 +17,14 @@ import React from 'react'
 type TaskEntry = {
   getIsDirty: () => boolean
   flush: () => Promise<boolean>
+  canSubmit?: () => boolean
 }
 
 type DirtyTasksAPI = {
   register: (_taskUUID: string, _entry: TaskEntry) => void
   unregister: (_taskUUID: string) => void
   flushAll: () => Promise<boolean>
+  canSubmit: () => boolean
 }
 
 // Default no-op so editors rendered outside a provider (teacher/grading
@@ -31,6 +33,7 @@ const noop: DirtyTasksAPI = {
   register: () => {},
   unregister: () => {},
   flushAll: async () => true,
+  canSubmit: () => true,
 }
 
 const AssignmentDirtyTasksContext = React.createContext<DirtyTasksAPI>(noop)
@@ -46,6 +49,8 @@ export function AssignmentDirtyTasksProvider({ children }: { children: React.Rea
       unregister: (taskUUID) => {
         registry.current.delete(taskUUID)
       },
+      canSubmit: () => registry.current.size > 0 &&
+        Array.from(registry.current.values()).every(entry => entry.canSubmit?.() !== false),
       flushAll: async () => {
         const dirty = Array.from(registry.current.values()).filter((e) => {
           try {

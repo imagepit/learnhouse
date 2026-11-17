@@ -125,16 +125,14 @@ test('answering a 60-question quiz leaves its diagrams in place', async ({ page 
   const start = performance.now()
   await view.open(s.bareCourseUuid, s.bareActivityUuid)
   const diagrams = page.locator('.lh-rich-diagram svg')
-  await expect(diagrams).toHaveCount(3)
+  await expect(diagrams).toHaveCount(1)
   const elapsed = Math.round(performance.now() - start)
-  const originals = await diagrams.elementHandles()
+  const original = await diagrams.elementHandle()
   await view.answerQuiz('A')
-  await expect(diagrams).toHaveCount(3)
-  for (const [index, original] of originals.entries()) {
-    expect(await diagrams.nth(index).evaluate((svg, oldSvg) => svg.isSameNode(oldSvg), original)).toBe(true)
-  }
+  await expect(diagrams).toHaveCount(1)
+  expect(await diagrams.evaluate((svg, oldSvg) => svg.isSameNode(oldSvg), original)).toBe(true)
   await info.attach('diagram-measurement', {
-    body: `60 questions; 3 figures; initial display ${elapsed} ms; 0 replaced SVGs after an answer`,
+    body: `60 questions; 1 visible figure; initial display ${elapsed} ms; 0 replaced SVGs after an answer`,
     contentType: 'text/plain',
   })
 })
