@@ -8,7 +8,8 @@ import { Button } from '@components/ui/button'
 import {
   getCourseGradebook,
   getCourseReportCohorts,
-  getCourseReportPDF,
+  getCourseReport,
+  type CourseReportFormat,
   gradebookCSV,
 } from '@services/courses/courseGradebook'
 
@@ -27,7 +28,8 @@ function CourseReportDownload({ courseUuid, token }: { courseUuid: string; token
   const heading = useId()
   const [company, setCompany] = useState('')
   const [session, setSession] = useState('')
-  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadingFormat, setDownloadingFormat] = useState<CourseReportFormat>()
+  const isDownloading = downloadingFormat !== undefined
   const [error, setError] = useState<'download_error' | 'conflict'>()
   const { data, isLoading, error: cohortError } = useSWR(
     ['course-report-cohorts', courseUuid, token],
@@ -39,21 +41,21 @@ function CourseReportDownload({ courseUuid, token }: { courseUuid: string; token
   const sessions = data?.filter(cohort => cohort.company === company) ?? []
   const cohort = sessions.find(item => String(item.group_id) === session)
 
-  async function downloadPDF() {
+  async function downloadReport(format: CourseReportFormat) {
     if (!cohort) return
     setError(undefined)
-    setIsDownloading(true)
+    setDownloadingFormat(format)
     try {
-      const result = await getCourseReportPDF(courseUuid, cohort, token)
+      const result = await getCourseReport({ courseUuid, cohort, token, format })
       if (result.status === 'cohort-conflict') {
         setError('conflict')
         return
       }
-      downloadFile(result.pdf, `course-report-${cohort.group_id}.pdf`)
+      downloadFile(result.file, `course-report-${cohort.group_id}.${format}`)
     } catch {
       setError('download_error')
     } finally {
-      setIsDownloading(false)
+      setDownloadingFormat(undefined)
     }
   }
 
@@ -98,8 +100,11 @@ function CourseReportDownload({ courseUuid, token }: { courseUuid: string; token
               ))}
             </select>
           </label>
-          <Button type="button" disabled={!cohort || isDownloading} onClick={downloadPDF}>
-            {t(`${label}.${isDownloading ? 'downloading' : 'download'}`)}
+          <Button type="button" disabled={!cohort || isDownloading} onClick={() => downloadReport('pdf')}>
+            {t(`${label}.${downloadingFormat === 'pdf' ? 'downloading' : 'download'}`)}
+          </Button>
+          <Button type="button" disabled={!cohort || isDownloading} onClick={() => downloadReport('csv')}>
+            {t(`${label}.${downloadingFormat === 'csv' ? 'downloading' : 'download_csv'}`)}
           </Button>
         </div>
       )}

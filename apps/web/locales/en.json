@@ -3174,7 +3174,7 @@
           "error": "Could not load grades.",
           "empty": "Grades appear after learners enroll and assignments are added.",
           "report": {
-            "title": "Company results PDF",
+            "title": "Company results report",
             "loading": "Loading report cohorts…",
             "load_error": "Could not load report cohorts.",
             "empty": "Link a user group named “Company / Session” to this course. Use a unique name for each session.",
@@ -3183,7 +3183,8 @@
             "choose_company": "Select a company",
             "choose_session": "Select a session",
             "download": "Download PDF",
-            "downloading": "Preparing PDF…",
+            "download_csv": "Download CSV for this session",
+            "downloading": "Preparing file…",
             "download_error": "Could not download the report.",
             "conflict": "Check that this session has enrolled learners and that none are in another report cohort for this course."
           },
