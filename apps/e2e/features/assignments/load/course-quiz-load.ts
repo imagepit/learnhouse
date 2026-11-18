@@ -29,11 +29,12 @@ type Observation = {
   kind: 'request'; run: string; route: string; learner: number
   start: number; ms: number; status: number
 } | {
-  kind: 'wave'; run: string; mode: RunMode; people: number; overlappingSubmits: number; submitSpreadMs: number
+  kind: 'wave'; run: string; mode: RunMode; people: number; overlappingSubmits: number; submitSpreadMs: number; imageConcurrencyPeak?: number
 }
 type Subject = {
   learner: Learner; page: Page; context: BrowserContext; view: AssignmentPage
   measureAs: (run: string) => Promise<void>
+  imageConcurrencyPeak: () => number | undefined
 }
 
 const sections = ['作業の準備', '履歴を読む', '差分を確認する']
@@ -155,6 +156,36 @@ async function subject(browser: Browser, learner: Learner, run: string, fixture:
     locale: 'en-US', viewport: { width: 1280, height: 900 },
   })
   const page = await context.newPage()
+  const configuredParallelism = process.env.LH_LOAD_IMAGE_PARALLEL
+  let imagePeak: number | undefined
+  if (configuredParallelism) {
+    const cap = Number(configuredParallelism)
+    if (!Number.isSafeInteger(cap) || cap < 1) throw new Error('Invalid image concurrency')
+    const pending = new Set<Request>()
+    let available = cap
+    const ready: Array<() => void> = []
+    const release = (request: Request) => {
+      if (!pending.delete(request)) return
+      const next = ready.shift()
+      if (next) next()
+      else available++
+    }
+    page.on('requestfinished', release)
+    page.on('requestfailed', release)
+    await page.route(url => url.origin === origin && url.pathname.includes('/outline-images/'), async route => {
+      const request = route.request()
+      if (available === 0) await new Promise<void>(resolve => ready.push(resolve))
+      else available--
+      pending.add(request)
+      imagePeak = Math.max(imagePeak ?? 0, pending.size)
+      try {
+        await route.continue()
+      } catch (error) {
+        release(request)
+        if (!page.isClosed()) throw error
+      }
+    })
+  }
   page.setDefaultTimeout(15_000)
   page.setDefaultNavigationTimeout(20_000)
   let activeRun = run
@@ -182,7 +213,10 @@ async function subject(browser: Browser, learner: Learner, run: string, fixture:
     activeRun = nextRun
     await context.setExtraHTTPHeaders({ 'x-learnhouse-load-run': nextRun })
   }
-  return { learner, page, context, view: new AssignmentPage(page), measureAs }
+  return {
+    learner, page, context, view: new AssignmentPage(page), measureAs,
+    imageConcurrencyPeak: () => imagePeak,
+  }
 }
 
 async function timed(run: string, operation: Operation, observations: Observation[], s: Subject, perform: () => Promise<void>) {
@@ -315,7 +349,9 @@ async function wave(browser: Browser, fixture: Fixture, mode: RunMode, people: n
     const images = recordedRequests.filter(o => o.route === 'image-sign' || o.route === 'object')
     const overlappingSubmits = submitRequests.filter(sub => images.some(img => img.start < sub.start + sub.ms && sub.start < img.start + img.ms)).length
     const starts = submitRequests.map(o => o.start)
+    const imagePeaks = subjects.flatMap(s => s.imageConcurrencyPeak() ?? [])
     data.push({ kind: 'wave', run, mode, people, overlappingSubmits,
+      imageConcurrencyPeak: imagePeaks.length ? Math.max(...imagePeaks) : undefined,
       submitSpreadMs: starts.length > 1 ? Math.max(...starts) - Math.min(...starts) : 0 })
     checkStopThreshold(data)
   } finally {
@@ -351,9 +387,14 @@ try {
       }
     }
     const mixedOnly = process.env.LH_LOAD_MIXED_ONLY === '1'
+    const diagnosticRounds = process.env.LH_LOAD_DIAGNOSTIC_WAVES
+    if (diagnosticRounds && (!Number.isSafeInteger(Number(diagnosticRounds)) || Number(diagnosticRounds) < 1)) {
+      throw new Error('Invalid diagnostic repetition count')
+    }
     for (const count of people) {
       if (count > 1 && !mixedOnly) for (let round = 0; round < rounds; round++) await wave(browser, fixture, 'view', count, round, adminToken, retried)
-      const mixedRounds = count === 20 ? Math.max(10, rounds) : rounds
+      const mixedRounds = diagnosticRounds
+        ? Number(diagnosticRounds) : count === 20 ? Math.max(10, rounds) : rounds
       for (let round = 0; round < mixedRounds; round++) await wave(browser, fixture, count === 1 ? 'serial' : 'mixed', count, round, adminToken, retried)
     }
   } else throw new Error('Use prepare or run')
