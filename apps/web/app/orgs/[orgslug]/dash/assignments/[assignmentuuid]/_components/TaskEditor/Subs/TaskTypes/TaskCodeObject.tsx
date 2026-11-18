@@ -101,6 +101,7 @@ type CodeTaskContents = {
   test_cases: CodeTestCase[]
   // Student-facing behavior. All default to the classic behavior so existing
   // code tasks keep working unchanged after this upgrade.
+  run_on_student_pc?: boolean
   allow_student_run?: boolean             // student can click Run Tests (default true)
   show_test_details_on_fail?: boolean     // reveal Expected/Got on a failed test (default true)
   show_hidden_test_count?: boolean        // show "N hidden tests" badge (default true)
@@ -176,6 +177,7 @@ function normalizeCodeContents(raw: any): CodeTaskContents {
     solution_code: raw?.solution_code ?? '',
     grading_mode: raw?.grading_mode ?? 'equal_weight',
     test_cases: raw?.test_cases ?? [],
+    run_on_student_pc: raw?.run_on_student_pc === true,
     allow_student_run: raw?.allow_student_run ?? true,
     show_test_details_on_fail: raw?.show_test_details_on_fail ?? true,
     show_hidden_test_count: raw?.show_hidden_test_count ?? true,
@@ -571,6 +573,7 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
   }
 
   const canRunLocal = view === 'student' && contents.allow_student_run !== false &&
+    contents.run_on_student_pc === true && !submissionGatedByPassing &&
     contents.language_id === LOCAL_PYTHON_LANGUAGE_ID && visibleTestCases.length > 0
 
   async function runLocalCode() {
@@ -931,6 +934,15 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
                   checked={contents.allow_student_run !== false}
                   onChange={(v) => setContents((prev) => ({ ...prev, allow_student_run: v }))}
                 />
+                {contents.language_id === LOCAL_PYTHON_LANGUAGE_ID && contents.allow_student_run !== false && !submissionGatedByPassing && (
+                  <CodeOptionToggle
+                    icon={<Play size={13} />}
+                    label={t('local_judge0.use_local')}
+                    description={t('local_judge0.use_local_hint')}
+                    checked={contents.run_on_student_pc === true}
+                    onChange={(enabled) => setContents((prev) => ({ ...prev, run_on_student_pc: enabled }))}
+                  />
+                )}
                 <CodeOptionToggle
                   icon={<Eye size={13} />}
                   label={t('dashboard.assignments.editor.task_editor.code.show_test_details_label')}
@@ -1006,7 +1018,10 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
                 <CodeMirror
                   value={code}
                   onChange={(val) => {
-                    if (!canStudentSave) return
+                    if (!canStudentSave || isRunning) return
+                    setShowResults(false)
+                    setLocalResults(null)
+                    setResults([])
                     interactedRef.current = true
                     setCode(val)
                   }}
@@ -1014,8 +1029,8 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
                   theme={cmTheme}
                   style={cmStyles}
                   height="300px"
-                  readOnly={!canStudentSave}
-                  editable={canStudentSave}
+                  readOnly={!canStudentSave || isRunning}
+                  editable={canStudentSave && !isRunning}
                   basicSetup={{ lineNumbers: true, foldGutter: false }}
                 />
               )}
@@ -1045,23 +1060,14 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
             {contents.allow_student_run !== false && (
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={runCode}
-                  disabled={isRunning}
+                  type="button"
+                  onClick={canRunLocal ? runLocalCode : runCode}
+                  disabled={isRunning || !access_token}
                   className="flex items-center space-x-1.5 px-3 py-1.5 text-sm font-semibold bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                  <span>{isRunning ? 'Running...' : 'Run Tests'}</span>
+                  <span>{t(isRunning ? 'local_judge0.running' : 'local_judge0.run_tests')}</span>
                 </button>
-                {canRunLocal && (
-                  <button
-                    type="button"
-                    onClick={runLocalCode}
-                    disabled={isRunning || !access_token}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    {t('local_judge0.run')}
-                  </button>
-                )}
               </div>
             )}
 
@@ -1076,10 +1082,7 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
 
             {/* Results: hidden tests are never run client-side, so they are
                 listed as "not shown" rather than counted as failures. */}
-            {showResults && localResults && (
-              <p role="status" className="text-sm font-medium text-slate-700">{t('local_judge0.practice')}</p>
-            )}
-            {showResults && (
+            {showResults && (localResults ?? results).length > 0 && (
               <TestResultsPanel
                 results={localResults ?? results}
                 testCases={contents.test_cases}
@@ -1245,18 +1248,18 @@ function TestResultsPanel({
                   <span className="text-[10px] text-slate-400 ms-auto">{result.time}s</span>
                 )}
               </div>
+              {!isHidden && (result.passed || !detailsSuppressed) && (
+                <div className="mt-2 ps-6 text-xs">
+                  <span className="font-medium text-slate-600">{t('local_judge0.stdout')}</span>
+                  <pre dir="ltr" className="mt-1 overflow-x-auto whitespace-pre-wrap rounded bg-white px-2 py-1 text-slate-900">{result.actual_stdout || t('local_judge0.empty_output')}</pre>
+                </div>
+              )}
               {!result.passed && !isHidden && !detailsSuppressed && (
                 <div className="mt-1.5 ps-6 text-xs space-y-0.5">
                   {result.expected_stdout !== null && (
                     <div>
                       <span className="text-slate-400">{t('dashboard.assignments.editor.task_editor.code_object.expected')} </span>
                       <code className="text-slate-600 bg-white px-1 rounded">{result.expected_stdout}</code>
-                    </div>
-                  )}
-                  {result.actual_stdout !== null && (
-                    <div>
-                      <span className="text-slate-400">{t('dashboard.assignments.editor.task_editor.code_object.got')} </span>
-                      <code className="text-red-600 bg-white px-1 rounded">{result.actual_stdout}</code>
                     </div>
                   )}
                   {result.stderr && (

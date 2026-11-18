@@ -1,5 +1,11 @@
 {
   "local_judge0": {
+    "run_tests": "テストを実行",
+    "running": "実行中…",
+    "stdout": "標準出力",
+    "empty_output": "（出力なし）",
+    "use_local": "公開テストを受講者のPCで実行",
+    "use_local_hint": "練習には受講者のPCのPython環境を使います。提出後の採点は別に行います。",
     "run": "このPCで実行",
     "practice": "このPCでの実行結果（練習用）",
     "key_prompt": "Judge0の起動スクリプトに表示されたローカル実行キーを入力してください。",

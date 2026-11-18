@@ -1,5 +1,11 @@
 {
   "local_judge0": {
+    "run_tests": "Run Tests",
+    "running": "Running…",
+    "stdout": "Standard output",
+    "empty_output": "(no output)",
+    "use_local": "Run public tests on the learner’s computer",
+    "use_local_hint": "Uses the learner’s local Python environment for practice. Grading is separate.",
     "run": "Run on this computer",
     "practice": "Local practice results",
     "key_prompt": "Enter the local run key printed by the Judge0 setup script.",
