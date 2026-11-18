@@ -18,9 +18,13 @@ export class LocalJudge0Error extends Error {
 }
 
 export function requestLocalJudge0Key(message: string): string | null {
-  const key = sessionStorage.getItem(keyName) ?? window.prompt(message)?.trim()
-  if (!key) return null
-  if (!/^[a-f0-9]{48}$/.test(key)) throw new LocalJudge0Error('key')
+  const input = sessionStorage.getItem(keyName) ?? window.prompt(message)
+  if (!input?.trim()) return null
+  const key = input.trim().replace(/^Local run key:\s*/i, '')
+  if (!/^[a-f0-9]{48}$/.test(key)) {
+    sessionStorage.removeItem(keyName)
+    throw new LocalJudge0Error('key')
+  }
   sessionStorage.setItem(keyName, key)
   return key
 }
