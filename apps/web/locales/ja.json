@@ -1,4 +1,13 @@
 {
+  "local_judge0": {
+    "run": "このPCで実行",
+    "practice": "このPCでの実行結果（練習用）",
+    "key_prompt": "Judge0の起動スクリプトに表示されたローカル実行キーを入力してください。",
+    "key": "ローカル実行キーを確認してください。",
+    "connection": "このPCのJudge0に接続できません。起動状態とChromeのローカル接続許可を確認してください。",
+    "response": "ローカルJudge0が実行結果を返せませんでした。",
+    "timeout": "ローカルJudge0の応答が間に合いませんでした。"
+  },
   "common": {
     "hello": "こんにちは",
     "home": "ホーム",

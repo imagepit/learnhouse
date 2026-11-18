@@ -40,6 +40,12 @@ import React, { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { v4 as uuidv4 } from 'uuid'
 import { useTranslation } from 'react-i18next'
+import {
+  LOCAL_PYTHON_LANGUAGE_ID,
+  LocalJudge0Error,
+  requestLocalJudge0Key,
+  runLocalPython,
+} from '@services/code/localJudge0'
 import dynamic from 'next/dynamic'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
@@ -213,6 +219,7 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
   // Execution state
   const [isRunning, setIsRunning] = useState(false)
   const [results, setResults] = useState<CodeTestResult[]>([])
+  const [localResults, setLocalResults] = useState<CodeTestResult[] | null>(null)
   const [showResults, setShowResults] = useState(false)
 
   // Submission state (student/grading)
@@ -507,6 +514,7 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
       return
     }
     setIsRunning(true)
+    setLocalResults(null)
     setShowResults(true)
     try {
       const resp = await fetch(`${getAPIUrl()}code/execute-batch`, {
@@ -557,6 +565,33 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
     } catch (err) {
       console.error('Code execution error:', err)
       toast.error(t('dashboard.assignments.editor.task_editor.code_object.exec_failed'))
+    } finally {
+      setIsRunning(false)
+    }
+  }
+
+  const canRunLocal = view === 'student' && contents.allow_student_run !== false &&
+    contents.language_id === LOCAL_PYTHON_LANGUAGE_ID && visibleTestCases.length > 0
+
+  async function runLocalCode() {
+    if (!canRunLocal || !access_token || isRunning) return
+
+    try {
+      const key = requestLocalJudge0Key(t('local_judge0.key_prompt'))
+      if (!key) return
+      setIsRunning(true)
+      setShowResults(false)
+      setLocalResults(null)
+      const output = await runLocalPython({
+        code,
+        tests: visibleTestCases,
+        outputLabel: t('local_judge0.practice'),
+        key,
+      })
+      setLocalResults(output)
+      setShowResults(true)
+    } catch (error) {
+      toast.error(t(`local_judge0.${error instanceof LocalJudge0Error ? error.reason : 'response'}`))
     } finally {
       setIsRunning(false)
     }
@@ -1017,6 +1052,16 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
                   {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                   <span>{isRunning ? 'Running...' : 'Run Tests'}</span>
                 </button>
+                {canRunLocal && (
+                  <button
+                    type="button"
+                    onClick={runLocalCode}
+                    disabled={isRunning || !access_token}
+                    className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {t('local_judge0.run')}
+                  </button>
+                )}
               </div>
             )}
 
@@ -1031,14 +1076,17 @@ function TaskCodeObject({ view, assignmentTaskUUID, user_id, onGraded }: TaskCod
 
             {/* Results: hidden tests are never run client-side, so they are
                 listed as "not shown" rather than counted as failures. */}
+            {showResults && localResults && (
+              <p role="status" className="text-sm font-medium text-slate-700">{t('local_judge0.practice')}</p>
+            )}
             {showResults && (
               <TestResultsPanel
-                results={results}
+                results={localResults ?? results}
                 testCases={contents.test_cases}
                 view="student"
                 showDetailsOnFail={contents.show_test_details_on_fail !== false}
                 maskedTestCases={contents.test_cases.filter(
-                  (tc) => tc.hidden && !results.some((r) => r.id === tc.id)
+                  (tc) => tc.hidden && !(localResults ?? results).some((r) => r.id === tc.id)
                 )}
                 showMaskedCount={contents.show_hidden_test_count !== false}
               />

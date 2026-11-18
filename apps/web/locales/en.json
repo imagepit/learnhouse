@@ -1,4 +1,13 @@
 {
+  "local_judge0": {
+    "run": "Run on this computer",
+    "practice": "Local practice results",
+    "key_prompt": "Enter the local run key printed by the Judge0 setup script.",
+    "key": "Check the local run key.",
+    "connection": "Could not reach Judge0 on this computer. Check that it is running and Chrome allows local connections.",
+    "response": "Local Judge0 could not return a result.",
+    "timeout": "Local Judge0 did not respond in time."
+  },
   "common": {
     "hello": "Hello",
     "home": "Home",

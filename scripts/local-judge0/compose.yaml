@@ -1,0 +1,48 @@
+name: learnhouse-local-judge0
+services:
+  server:
+    image: judge0/judge0:1.13.1
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:2358:2358"
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  workers:
+    image: learnhouse-local-judge0-python:1.13.1-arm64
+    platform: linux/amd64
+    build: .
+    command: ["./scripts/workers"]
+    privileged: true
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  db:
+    image: postgres:16.2
+    env_file: judge0.conf
+    volumes:
+      - data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "judge0"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  redis:
+    image: redis:7.2.4
+    env_file: judge0.conf
+    command: ["sh", "-c", "exec redis-server --appendonly no --requirepass \"$$REDIS_PASSWORD\""]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+volumes:
+  data:

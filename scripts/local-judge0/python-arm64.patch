@@ -1,0 +1,18 @@
+--- a/app/jobs/isolate_job.rb
++++ b/app/jobs/isolate_job.rb
+@@ -196,0 +197 @@
++    shell = "/bin/bash"
+@@ -200 +201,9 @@
+-      File.open(run_script, "w") { |f| f.write("#{submission.language.run_cmd} #{command_line_arguments}")}
++      run_command = submission.language.run_cmd
++      if submission.language_id == 71
++        root = "/usr/local/core241-native"
++        libraries = ["#{root}/lib", "#{root}/usr-lib", "#{root}/python/lib"].join(":")
++        loader = "#{root}/lib/ld-musl-aarch64.so.1 --library-path #{libraries}"
++        shell = "#{loader} #{root}/busybox sh"
++        run_command = "PYTHONHOME=#{root}/python exec #{loader} #{root}/python/bin/python3 script.py"
++      end
++      File.open(run_script, "w") { |f| f.write("#{run_command} #{command_line_arguments}")}
+@@ -222 +231 @@
+-    -- /bin/bash run \
++    -- #{shell} run \
