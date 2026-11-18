@@ -140,6 +140,7 @@ function classify(request: Request, assignment: string): string | undefined {
   const url = new URL(request.url())
   const path = url.pathname
   if (url.origin !== origin) return request.resourceType() === 'image' && path.includes('/uploads/image-') ? 'object' : undefined
+  if (path.endsWith('/outline-images') && request.method() === 'POST') return 'image-batch'
   if (path.includes('/outline-images/')) return 'image-sign'
   if (path.includes(`/assignments/${assignment}/tasks/`) && path.endsWith('/submissions') && request.method() === 'PUT') return 'answer-save'
   if (path.endsWith(`/assignments/${assignment}/submissions`) && request.method() === 'POST') return 'submit'
@@ -194,7 +195,7 @@ async function subject(browser: Browser, learner: Learner, run: string, fixture:
     const route = classify(request, fixture.assignment)
     if (!route) return
     requests.set(request, { route, run: activeRun, start: Date.now(), status: 0 })
-    if (route === 'image-sign') imageStarted()
+    if (route === 'image-sign' || route === 'image-batch') imageStarted()
   })
   page.on('response', response => {
     const found = requests.get(response.request())
@@ -248,9 +249,11 @@ async function lesson(s: Subject, fixture: Fixture, run: string, data: Observati
       if (i) await body.getByRole('link', { name: new RegExp(`次のセクション.*${title}`) }).click()
       await body.getByRole('heading', { name: title }).waitFor()
       const images = body.locator('img[alt^="Exercise image"]')
-      await expect(images).toHaveCount(30)
-      for (const index of [4, 9, 14, 19, 24, 29]) await images.nth(index).scrollIntoViewIfNeeded()
-      await expect.poll(() => images.evaluateAll(rows => rows.every(i => i instanceof HTMLImageElement && i.complete && i.naturalWidth > 0)),
+      const slots = body.locator('.block-image')
+      await expect(slots).toHaveCount(30)
+      for (const slot of await slots.all()) await slot.scrollIntoViewIfNeeded()
+      await expect.poll(() => images.evaluateAll(rows => rows.length === 30 &&
+        rows.every(i => i instanceof HTMLImageElement && i.complete && i.naturalWidth > 0)),
         { timeout: 12_000 }).toBe(true)
     }
   })
@@ -332,7 +335,11 @@ async function wave(browser: Browser, fixture: Fixture, mode: RunMode, people: n
       await viewing
       await prepare()
     }
-    const submitted = await Promise.all(submitters.map(s => submit(s, fixture, run, data, adminToken)))
+    const spacing = Number(process.env.LH_LOAD_SUBMIT_SPACING_MS ?? 0)
+    const submitted = await Promise.all(submitters.map(async (s, index) => {
+      if (index && spacing) await delay(index * spacing)
+      return submit(s, fixture, run, data, adminToken)
+    }))
     await viewing
     if (mode === 'view') {
       checkStopThreshold(data)
@@ -346,7 +353,7 @@ async function wave(browser: Browser, fixture: Fixture, mode: RunMode, people: n
     submitters.forEach((s, i) => { if (submitted[i]) retried.add(s.learner.index) })
     const recordedRequests = data.filter(o => o.kind === 'request')
     const submitRequests = recordedRequests.filter(o => o.route === 'submit')
-    const images = recordedRequests.filter(o => o.route === 'image-sign' || o.route === 'object')
+    const images = recordedRequests.filter(o => ['image-sign', 'image-batch', 'object'].includes(o.route))
     const overlappingSubmits = submitRequests.filter(sub => images.some(img => img.start < sub.start + sub.ms && sub.start < img.start + img.ms)).length
     const starts = submitRequests.map(o => o.start)
     const imagePeaks = subjects.flatMap(s => s.imageConcurrencyPeak() ?? [])
@@ -363,7 +370,11 @@ async function wave(browser: Browser, fixture: Fixture, mode: RunMode, people: n
   }
 }
 
-const browser = await chromium.launch({ channel: process.env.LH_LOAD_CHROME_CHANNEL })
+const localTlsKey = process.env.LH_LOAD_LOCAL_TLS_SPKI
+const browser = await chromium.launch({
+  channel: process.env.LH_LOAD_CHROME_CHANNEL,
+  args: localTlsKey ? ['--ignore-certificate-errors-spki-list=' + localTlsKey] : [],
+})
 try {
   if (process.argv[2] === 'prepare') await prepare(browser)
   else if (process.argv[2] === 'run') {
