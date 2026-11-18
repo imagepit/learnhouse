@@ -35,6 +35,12 @@ import { useOrg } from '@components/Contexts/OrgContext'
 import { useCourse } from '@components/Contexts/CourseContext'
 import { uploadSqliteDb } from '@services/blocks/CodePlayground/sqlite'
 import { getAPIUrl } from '@services/config/config'
+import {
+  LOCAL_PYTHON_LANGUAGE_ID,
+  LocalJudge0Error,
+  requestLocalJudge0Key,
+  runLocalPython,
+} from '@services/code/localJudge0'
 import { PLAYGROUND_LANGUAGES, getLanguageById } from './languages'
 import SubmissionHistory from './SubmissionHistory'
 import CodeDiff from './CodeDiff'
@@ -460,6 +466,8 @@ const CodePlaygroundComponent: React.FC = (props: any) => {
   const [code, setCode] = useState(starterCode)
   const [results, setResults] = useState<TestResult[] | null>(null)
   const [isRunning, setIsRunning] = useState(false)
+  const [isLocalResult, setIsLocalResult] = useState(false)
+  const [localRunError, setLocalRunError] = useState<string | null>(null)
   const [extensions, setExtensions] = useState<any[]>([])
   const [showLangDropdown, setShowLangDropdown] = useState(false)
   const [activeTab, setActiveTab] = useState<RightTab>('description')
@@ -791,6 +799,8 @@ const CodePlaygroundComponent: React.FC = (props: any) => {
     if (isRunning || !accessToken) return
     setIsRunning(true)
     setResults(null)
+    setIsLocalResult(false)
+    setLocalRunError(null)
 
     const allTestCases = [...testCases, ...studentTestCases]
 
@@ -905,6 +915,35 @@ const CodePlaygroundComponent: React.FC = (props: any) => {
       setIsRunning(false)
     }
   }, [isRunning, accessToken, testCases, languageId, code, isEditable, isSqlLanguage, sqliteDbPath, activityUuid, blockId, timedMode, challengeExpired, t])
+
+  const canRunLocal = !isEditable && languageId === LOCAL_PYTHON_LANGUAGE_ID && !additionalFiles.length
+
+  async function runLocalCode() {
+    if (!canRunLocal || !accessToken || isRunning || (timedMode && challengeExpired)) return
+
+    try {
+      setLocalRunError(null)
+      const key = requestLocalJudge0Key(t('local_judge0.key_prompt'))
+      if (!key) return
+      setIsRunning(true)
+      setResults(null)
+      setIsLocalResult(true)
+      setActiveTab('output')
+      const output = await runLocalPython({
+        code,
+        tests: [...testCases, ...studentTestCases],
+        outputLabel: t('editor.blocks.code_playground.tab_output'),
+        key,
+      })
+      setResults(output)
+      parsedErrorsRef.current = parseErrors(output[0]?.stderr ?? null, output[0]?.compile_output ?? null)
+      cmViewRef.current?.dispatch({})
+    } catch (error) {
+      setLocalRunError(t(`local_judge0.${error instanceof LocalJudge0Error ? error.reason : 'response'}`))
+    } finally {
+      setIsRunning(false)
+    }
+  }
 
   const runCodeRef = useRef(runCode)
   const resetCodeRef = useRef(resetCode)
@@ -1834,6 +1873,10 @@ const CodePlaygroundComponent: React.FC = (props: any) => {
                   />
                 </div>
               )}
+              {localRunError && <p role="alert" className="px-4 pt-2 text-sm text-red-300">{localRunError}</p>}
+              {isLocalResult && !isRunning && results && (
+                <p className="px-4 pt-2 text-xs text-neutral-300">{t('local_judge0.practice')}</p>
+              )}
               <div className="flex items-center gap-3 px-4 py-2.5">
                 <button
                   onClick={runCode}
@@ -1851,6 +1894,16 @@ const CodePlaygroundComponent: React.FC = (props: any) => {
                   )}
                   {isEditable ? t('editor.blocks.code_playground.test_run') : t('editor.blocks.code_playground.run_code')}
                 </button>
+                {canRunLocal && (
+                  <button
+                    type="button"
+                    onClick={runLocalCode}
+                    disabled={isRunning || !accessToken}
+                    className="rounded-lg border border-white/20 px-3 py-2 text-[13px] font-semibold text-neutral-200 hover:bg-white/10 disabled:opacity-50"
+                  >
+                    {t('local_judge0.run')}
+                  </button>
+                )}
                 <span className="text-[10px] text-neutral-500 hidden sm:inline">
                   {typeof navigator !== 'undefined' && navigator.platform?.includes('Mac') ? '\u2318' : 'Ctrl'}+Enter
                 </span>
