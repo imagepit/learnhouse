@@ -1,0 +1,12 @@
+# LearnHouseのOutline画像プレビュー
+
+本文や設問の表示範囲に近づいたOutline画像を、LearnHouseがアクティビティ単位で最大32件ずつ認可します。変換を有効にした環境では、PNGとJPEGをCloudflare Workerが640pxまたは1200px以下のWebPに変換します。SVGなどの画像と拡大表示にはR2の原本を使用します。Workerで変換に失敗した場合は、LearnHouse経由で原本を取得します。
+
+1. `wrangler.toml` の `OUTLINE_ORIGINALS` を既存の非公開Outline R2バケットに設定します。Workerとバケットは同じCloudflareアカウントに置きます。
+2. `PREVIEW_KEY` をWorker Secretとして登録します。用途専用に生成した32バイトの乱数を64桁の16進文字列で登録します。
+3. Workerを配備してHTTPSオリジンを確認します。Workerのホストには、認証前に応答するCache RulesやアクセスログへのURL出力を設定しないでください。
+4. LearnHouse APIの `LEARNHOUSE_OUTLINE_IMAGE_WORKER_ORIGIN` にWorkerのHTTPSオリジンを設定し、同じ鍵を `LEARNHOUSE_OUTLINE_IMAGE_PREVIEW_KEY` にSecretとして登録してAPIを再起動します。既存のR2設定と添付台帳はそのまま使用します。
+
+Workerは最長60秒の暗号化チケットを検証した後にだけ変換キャッシュを確認します。変換キャッシュは原本のETagごとに保持します。受講者へのレスポンスは `private, no-store` です。チャットや教材データにチケットや鍵を保存しないでください。
+
+変換の切り戻しは、LearnHouse APIからWorkerのオリジンとプレビュー用の鍵の設定を外し、APIを再起動します。認可をまとめる処理と遅延読み込みは引き続き動作し、R2の原本を表示します。

@@ -1,0 +1,11 @@
+name = "learnhouse-outline-images"
+main = "worker.mjs"
+compatibility_date = "2026-11-18"
+preview_urls = false
+
+[images]
+binding = "IMAGES"
+
+[[r2_buckets]]
+binding = "OUTLINE_ORIGINALS"
+bucket_name = "replace-with-private-outline-bucket"
