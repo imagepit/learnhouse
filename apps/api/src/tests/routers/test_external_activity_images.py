@@ -1,4 +1,5 @@
 import json
+from unittest.mock import AsyncMock
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
@@ -12,7 +13,7 @@ from sqlalchemy import update
 from src.db.user_organizations import UserOrganization
 from src.routers import external_activity_images
 from src.services.ai.tools import doc_ops
-from src.services.media.outline_images import get_outline_images
+from src.services.media.outline_images import get_image_preview, get_outline_images
 
 R2 = "https://" + "0" * 32 + ".r2.cloudflarestorage.com"
 ATTACHMENT = str(uuid4())
@@ -39,16 +40,60 @@ async def images(monkeypatch, tmp_path, db, course, activity):
         monkeypatch.setenv(f"LEARNHOUSE_OUTLINE_R2_{key}", value)
     monkeypatch.setenv("LEARNHOUSE_OUTLINE_IMAGE_CATALOG", str(catalog))
     get_outline_images.cache_clear()
+    get_image_preview.cache_clear()
     app = FastAPI()
     app.include_router(external_activity_images.router, prefix="/api/v1")
     app.dependency_overrides[get_db_session] = lambda: db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="https://learnhouse.test") as client:
         yield client, row, catalog
     get_outline_images.cache_clear()
+    get_image_preview.cache_clear()
 
 
 def image_path(row):
     return f"/api/v1/courses/{row['course_uuid']}/activities/{row['activity_uuid']}/outline-images/{row['attachment_id']}"
+
+
+async def test_batch_authorizes_once_and_only_issues_urls_for_registered_images(images, monkeypatch):
+    client, row, catalog = images
+    png = str(uuid4())
+    missing = str(uuid4())
+    catalog.write_text(json.dumps({"version": 1, "images": [
+        row, {**row, "attachment_id": png, "object_key": "uploads/sample.png", "content_type": "image/png"},
+    ]}))
+    monkeypatch.setenv("LEARNHOUSE_OUTLINE_IMAGE_WORKER_ORIGIN", "https://preview.example.org")
+    monkeypatch.setenv("LEARNHOUSE_OUTLINE_IMAGE_PREVIEW_KEY", "00" * 32)
+    verifier = AsyncMock(wraps=external_activity_images.verify_activity_reader_access_by_uuid)
+    monkeypatch.setattr(external_activity_images, "verify_activity_reader_access_by_uuid", verifier)
+    batch_path = image_path(row).rsplit("/", 1)[0]
+    response = await client.post(batch_path, json={"attachments": [png, ATTACHMENT, png, missing], "width": 640})
+    assert response.status_code == 200, response.text
+    assert response.headers["cache-control"] == "private, no-store"
+    verifier.assert_awaited_once()
+    urls = response.json()["images"]
+    assert set(urls) == {png, ATTACHMENT}
+    assert urls[png].startswith("https://preview.example.org/preview/")
+    assert "sample.png" not in urls[png]
+    assert parse_qs(urlsplit(urls[ATTACHMENT]).query)["response-content-disposition"] == ["attachment"]
+    original = await client.get(batch_path + "/" + png)
+    assert original.headers["location"].startswith(R2 + "/")
+
+
+async def test_batch_denies_revoked_users_and_cross_course_references(images, db, course):
+    client, row, _ = images
+    params = {"attachments": [ATTACHMENT], "width": 1200}
+    wrong = image_path({**row, "course_uuid": f"course_{uuid4()}"}).rsplit("/", 1)[0]
+    assert (await client.post(wrong, json=params)).status_code == 404
+    batch_path = image_path(row).rsplit("/", 1)[0]
+    assert (await client.post(batch_path, json={**params, "width": 100})).status_code == 422
+    assert (await client.post(batch_path, json={**params, "attachments": [ATTACHMENT] * 33})).status_code == 422
+    course.public = False
+    db.add(course)
+    await db.commit()
+    denied = await client.post(batch_path, json=params)
+    assert denied.status_code == 401
+    assert denied.headers["cache-control"] == "private, no-store"
+    assert "images" not in denied.json()
 
 
 async def test_public_redirect_uses_dedicated_bucket_and_signed_response_controls(images):

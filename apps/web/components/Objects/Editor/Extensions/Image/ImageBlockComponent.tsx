@@ -14,6 +14,7 @@ import Modal from '@components/Objects/StyledElements/Modal/Modal'
 import { useTranslation } from 'react-i18next'
 import { activityImageUrl, httpsImageUrl, OUTLINE_IMAGE_MAX_WIDTH } from '@services/media/activityImages'
 import AIImageButton from '@components/Objects/AI/AIImageButton'
+import OutlineImagePreview from '@components/Objects/RichMarkdown/OutlineImagePreview'
 
 const SUPPORTED_FILES = constructAcceptValue(['jpg', 'png', 'webp', 'gif'])
 const UNSPLASH_UTM = '?utm_source=LearnHouse&utm_medium=referral'
@@ -250,7 +251,12 @@ function ImageBlockComponent(props: any) {
             <div className={`relative group ${phoneFullWidth}`} style={viewFrameStyle}>
               {/* On touch screens tapping the picture opens the viewer, since
                   the hover controls below never show there. Desktop keeps them. */}
-              <img
+              {hasOutlineRef ? (
+                <OutlineImagePreview key={imageUrl} src={imageUrl} alt={alt} width={outlineWidth}
+                  onClick={() => {
+                    if (window.matchMedia('(hover: none)').matches) handleExpand()
+                  }} />
+              ) : <img
                 src={imageUrl}
                 alt={alt}
                 referrerPolicy={referenceUrl ? 'no-referrer' : undefined}
@@ -259,8 +265,8 @@ function ImageBlockComponent(props: any) {
                 onClick={() => {
                   if (window.matchMedia('(hover: none)').matches) handleExpand()
                 }}
-                className={`rounded-lg max-md:rounded-xl max-w-full h-auto ${hasOutlineRef ? "w-auto" : "w-full"}`}
-              />
+                className="rounded-lg max-md:rounded-xl max-w-full h-auto w-full"
+              />}
               <div className="absolute top-2 end-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={handleExpand}
@@ -295,7 +301,7 @@ function ImageBlockComponent(props: any) {
           minWidth="lg"
           minHeight="lg"
           dialogContent={
-            <div className="w-full flex flex-col items-center justify-center">
+            isModalOpen && <div className="w-full flex flex-col items-center justify-center">
               <img
                 src={imageUrl}
                 alt={alt}

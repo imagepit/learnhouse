@@ -2,9 +2,11 @@ import json
 import logging
 import os
 import re
+from base64 import urlsafe_b64encode
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
+from time import time
 from typing import Protocol
 from urllib.parse import urlsplit
 from uuid import UUID
@@ -12,10 +14,12 @@ from uuid import UUID
 import boto3
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 logger = logging.getLogger(__name__)
 CACHE_CONTROL = "private, no-store"
 EXPIRES_IN = 60
+_PREVIEW_CONTEXT = b"learnhouse-outline-preview-v1"
 _ENDPOINT = re.compile(r"https://[0-9a-f]{32}\.r2\.cloudflarestorage\.com")
 _IMAGE_TYPES = {
     ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -72,16 +76,44 @@ class ObjectSigner(Protocol):
 
 
 @dataclass(frozen=True)
+class ImagePreview:
+    origin: str
+    cipher: AESGCM
+
+    def url(self, object_key: str, width: int) -> str:
+        nonce = os.urandom(12)
+        content = json.dumps([object_key, width, int(time()) + EXPIRES_IN]).encode()
+        token = nonce + self.cipher.encrypt(nonce, content, _PREVIEW_CONTEXT)
+        return f"{self.origin}/preview/{urlsafe_b64encode(token).decode().rstrip('=')}"
+
+
+@cache
+def get_image_preview() -> ImagePreview | None:
+    origin = os.environ.get("LEARNHOUSE_OUTLINE_IMAGE_WORKER_ORIGIN", "").rstrip("/")
+    key = os.environ.get("LEARNHOUSE_OUTLINE_IMAGE_PREVIEW_KEY", "")
+    if not origin and not key:
+        return None
+    if not re.fullmatch(r"https://[a-z0-9-]+(?:\.[a-z0-9-]+)+", origin) or not re.fullmatch(r"[0-9a-fA-F]{64}", key):
+        logger.warning("Outline image transformation disabled: invalid configuration")
+        return None
+    return ImagePreview(origin, AESGCM(bytes.fromhex(key)))
+
+
+@dataclass(frozen=True)
 class OutlineImages:
     endpoint: str
     bucket: str
     catalog: dict[ImageRef, ImageObject]
     client: ObjectSigner
 
-    def sign(self, ref: ImageRef) -> str | None:
+    def sign(self, ref: ImageRef, *, preview_width: int | None = None) -> str | None:
         image = self.catalog.get(ref)
         if image is None:
             return None
+        if preview_width is not None and image.content_type in ("image/png", "image/jpeg"):
+            preview = get_image_preview()
+            if preview:
+                return preview.url(image.object_key, preview_width)
         params = {
             "Bucket": self.bucket, "Key": image.object_key,
             "ResponseCacheControl": CACHE_CONTROL, "ResponseContentType": image.content_type,
