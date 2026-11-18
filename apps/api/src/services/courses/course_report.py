@@ -1,8 +1,12 @@
 """Prepare course reports for exactly one company and cohort."""
 
+import csv
 import os
+import re
 from collections import Counter
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
+from io import StringIO
 
 from fastapi import HTTPException
 from fpdf import FPDF
@@ -21,7 +25,7 @@ from src.db.user_organizations import UserOrganization
 from src.db.usergroup_resources import UserGroupResource
 from src.db.usergroup_user import UserGroupUser
 from src.db.usergroups import UserGroup
-from src.services.courses.course_gradebook import CourseGradebook, read_course_gradebook
+from src.services.courses.course_gradebook import CourseGradebook, GradebookLearner, read_course_gradebook
 
 
 class CourseReportCohort(BaseModel):
@@ -125,6 +129,42 @@ _SUBMISSION_LABELS = {
 }
 
 
+def _assignment_results(report: CourseReport, learner: GradebookLearner) -> Iterator[str]:
+    results = {result.assignment_uuid: result for result in learner.results}
+    for assignment in report.gradebook.assignments:
+        result = results.get(assignment.assignment_uuid)
+        status = result.status if result else AssignmentUserSubmissionStatus.NOT_SUBMITTED
+        if result and result.display_grade is not None:
+            yield result.display_grade
+        elif assignment.ungraded and status in (
+            AssignmentUserSubmissionStatus.SUBMITTED, AssignmentUserSubmissionStatus.LATE,
+        ):
+            yield "提出済み・採点対象外"
+        else:
+            yield _SUBMISSION_LABELS[status]
+
+
+def render_course_report_csv(report: CourseReport) -> bytes:
+    output = StringIO(newline="")
+    writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+
+    def row(fields: Iterable[str]) -> None:
+        writer.writerow(
+            "'" + field if re.match(r"[\t\r\n]|\s*[=+\-@＝＋－＠]", field) else field
+            for field in fields
+        )
+
+    row(["企業", "開催回", "受講者", "完了教材数", "全教材数",
+         *(assignment.title for assignment in report.gradebook.assignments)])
+    for learner in report.gradebook.learners:
+        row([
+            report.cohort.company, report.cohort.session, learner.username,
+            str(report.completed.get(learner.user_id, 0)), str(report.total_activities),
+            *_assignment_results(report, learner),
+        ])
+    return output.getvalue().encode("utf-8-sig")
+
+
 def _pdf_label(value: str) -> str:
     text = " ".join(value.split())
     return text if len(text) <= 250 else text[:249] + "…"
@@ -162,22 +202,12 @@ def render_course_report(report: CourseReport) -> bytes:
         if not report.gradebook.assignments:
             line("成績対象の課題なし")
             continue
-        results = {result.assignment_uuid: result for result in learner.results}
         with pdf.table(
             col_widths=(1, 2, 1), line_height=5, padding=2, wrapmode="CHAR",
             headings_style=FontFace(fill_color=(233, 239, 246)),
         ) as table:
             table.row(("章", "クイズ・課題", "成績・提出状況"))
-            for assignment in report.gradebook.assignments:
-                result = results.get(assignment.assignment_uuid)
-                status = result.status if result else AssignmentUserSubmissionStatus.NOT_SUBMITTED
-                value = _SUBMISSION_LABELS[status]
-                if result and result.display_grade is not None:
-                    value = result.display_grade
-                elif assignment.ungraded and status in (
-                    AssignmentUserSubmissionStatus.SUBMITTED, AssignmentUserSubmissionStatus.LATE,
-                ):
-                    value = "提出済み・採点対象外"
+            for assignment, value in zip(report.gradebook.assignments, _assignment_results(report, learner), strict=True):
                 table.row((
                     _pdf_label(chapter_names.get(assignment.chapter_id, "章未設定")),
                     _pdf_label(assignment.title),

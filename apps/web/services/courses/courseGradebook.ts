@@ -127,8 +127,12 @@ export async function getCourseReportCohorts(courseUuid: string, token: string) 
   return data
 }
 
-export async function getCourseReportPDF(courseUuid: string, cohort: CourseReportCohort, token: string) {
-  const url = `${getAPIUrl()}courses/${encodeURIComponent(courseUuid)}/gradebook/report.pdf`
+export type CourseReportFormat = 'csv' | 'pdf'
+
+export async function getCourseReport({
+  courseUuid, cohort, token, format,
+}: { courseUuid: string; cohort: CourseReportCohort; token: string; format: CourseReportFormat }) {
+  const url = `${getAPIUrl()}courses/${encodeURIComponent(courseUuid)}/gradebook/report.${format}`
   const response = await fetch(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -136,8 +140,9 @@ export async function getCourseReportPDF(courseUuid: string, cohort: CourseRepor
     cache: 'no-store',
   })
   if (response.status === 409) return { status: 'cohort-conflict' } as const
-  if (!response.ok || !response.headers.get('Content-Type')?.startsWith('application/pdf')) {
+  const mime = format === 'pdf' ? 'application/pdf' : 'text/csv'
+  if (!response.ok || response.headers.get('Content-Type')?.split(';')[0] !== mime) {
     throw new Error('Could not download course report')
   }
-  return { status: 'ready', pdf: await response.blob() } as const
+  return { status: 'ready', file: await response.blob() } as const
 }

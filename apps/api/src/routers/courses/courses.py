@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 import json
 import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, Request, Query, BackgroundTasks
@@ -36,6 +36,7 @@ from src.services.courses.course_report import (
     list_course_report_cohorts,
     prepare_course_report,
     render_course_report,
+    render_course_report_csv,
 )
 from src.services.courses.courses import (
     create_course,
@@ -547,13 +548,14 @@ async def api_list_course_report_cohorts(
 
 
 @router.post(
-    "/{course_uuid}/gradebook/report.pdf",
+    "/{course_uuid}/gradebook/report.{format}",
     response_class=Response,
-    responses={200: {"content": {"application/pdf": {}}}},
+    responses={200: {"content": {"application/pdf": {}, "text/csv": {}}}},
 )
 async def api_download_course_report(
     request: Request,
     course_uuid: str,
+    format: Literal["pdf", "csv"],
     selection: CourseReportCohort,
     current_user: PublicUser = Depends(get_current_user),
     db_session: AsyncSession = Depends(get_db_session),
@@ -562,12 +564,15 @@ async def api_download_course_report(
     report = await prepare_course_report(course, selection, db_session)
     # Release the read transaction before the CPU-bound font subsetting.
     await db_session.rollback()
-    content = await run_in_threadpool(render_course_report, report)
+    render, media_type = (render_course_report, "application/pdf") if format == "pdf" else (
+        render_course_report_csv, "text/csv",
+    )
+    content = await run_in_threadpool(render, report)
     return Response(
         content=content,
-        media_type="application/pdf",
+        media_type=media_type,
         headers={
-            "Content-Disposition": f'attachment; filename="course-report-{selection.group_id}.pdf"',
+            "Content-Disposition": f'attachment; filename="course-report-{selection.group_id}.{format}"',
             "Cache-Control": "private, no-store",
         },
     )
