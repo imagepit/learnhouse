@@ -10,7 +10,9 @@ OutlineのR2原本は既存のOutlineバックアップで復旧する。Redis�
 
 `deploy/backup` はアプリ配備から独立したKustomize入口。転送JobはPlane名前空間で既存Outline用Drive認証を参照する。取得JobはLearnHouse名前空間でDBと教材PVCを読み取り、ステージングPVCに書き込む。転送JobにはそのステージングPVだけをノード上の読み取り専用パスで渡す。PVを再作成した場合は、下の手順で新しい割り当てを確認して再配備する。
 
-Kustomizeは共通のDrive転送コードを `imagepit/imagepit` の `infra/backup` から取得する。以下の手順を実行する端末では、同リポジトリをHTTPSで読み取れるGit認証を設定する。
+Kustomizeは共通のDrive転送コードを `imagepit/platform` の `backup/` から取得する。以下の手順を実行する端末では、同リポジトリをHTTPSで読み取れるGit認証を設定する。
+
+本番のJobは `/drive-common/drive_loader.py` を使う。ローカルで `LEARNHOUSE_DRIVE_TRANSPORT_DIR` を設定した場合は、そのディレクトリから読み込む。設定がなければ、リポジトリの親にある `platform/backup`、`imagepit/infra/backup`、`/Users/imagepit/Documents/imagepit/infra/backup` の順に探す。最後の2つは共有部品の移行期間中に使う。
 
 1. 初回は停止状態でリソースを作成し、取得Jobを1回実行する。Jobが完了し、`stage=capture` と `result=verified` がそろうまで待つ。
 

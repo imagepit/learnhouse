@@ -5,6 +5,7 @@ from contextlib import contextmanager
 import fcntl
 import hashlib
 import io
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -372,6 +373,30 @@ def hold_capture(root):
         yield
 
 
+def load_transport():
+    path = Path('/drive-common/drive_loader.py')
+    if not path.is_file():
+        directory = os.getenv('LEARNHOUSE_DRIVE_TRANSPORT_DIR')
+        if directory:
+            path = Path(directory).resolve() / 'drive_loader.py'
+            require(path.is_file(), 'drive_loader_missing')
+        else:
+            parent = Path(__file__).resolve().parents[3]
+            candidates = (
+                parent / 'platform/backup',
+                parent / 'imagepit/infra/backup',
+                Path('/Users/imagepit/Documents/imagepit/infra/backup'),
+            )
+            path = next((candidate / 'drive_loader.py' for candidate in candidates
+                         if (candidate / 'drive_loader.py').is_file()), None)
+            require(path is not None, 'drive_transport_directory_required')
+
+    spec = importlib.util.spec_from_file_location('_learnhouse_drive_loader', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.load(__file__)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('stage', choices=('capture', 'transfer', 'verify-drive', 'restore-check'))
@@ -383,10 +408,7 @@ def main():
         if args.stage == 'capture':
             capture(ROOT, Path('/content'), Path('/catalog') / CATALOG, now)
         else:
-            import sys
-            sys.path.insert(0, '/drive-common')
-            import drive_loader
-            shared = drive_loader.load(__file__)
+            shared = load_transport()
             drive = Drive(shared, read_only=args.stage != 'transfer')
             try:
                 if args.stage == 'transfer':
