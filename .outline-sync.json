@@ -1,0 +1,10 @@
+{
+  "collection": "learnhouse",
+  "layout": "files",
+  "exclude": [
+    "*.md",
+    "!(deploy|docs)/**",
+    "docs/*.md",
+    "docs/!(ops)/**"
+  ]
+}

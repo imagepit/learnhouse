@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: learnhouse-content
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: learnhouse
+spec:
+  selector:
+    app: learnhouse
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: learnhouse
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: learnhouse
+  template:
+    metadata:
+      labels:
+        app: learnhouse
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: presenton-dockerhub
+      containers:
+        - name: learnhouse
+          image: ghcr.io/learnhouse/app
+          ports:
+            - name: http
+              containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: learnhouse-config
+          env:
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: LEARNHOUSE_SQL_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-env
+                  key: LEARNHOUSE_SQL_CONNECTION_STRING
+            - name: LEARNHOUSE_REDIS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-env
+                  key: LEARNHOUSE_REDIS_CONNECTION_STRING
+            - name: LEARNHOUSE_REDIS_URL
+              value: $(LEARNHOUSE_REDIS_CONNECTION_STRING)
+            - name: LEARNHOUSE_INITIAL_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-env
+                  key: LEARNHOUSE_INITIAL_ADMIN_PASSWORD
+            - name: LEARNHOUSE_AUTH_JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-env
+                  key: LEARNHOUSE_AUTH_JWT_SECRET_KEY
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-env
+                  key: NEXTAUTH_SECRET
+            - name: COLLAB_INTERNAL_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-env
+                  key: COLLAB_INTERNAL_KEY
+            - name: LEARNHOUSE_OUTLINE_R2_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-outline-r2
+                  key: access-key-id
+                  optional: true
+            - name: LEARNHOUSE_OUTLINE_R2_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-outline-r2
+                  key: secret-access-key
+                  optional: true
+          volumeMounts:
+            - name: outline-image-catalog
+              mountPath: /etc/learnhouse-outline-images
+              readOnly: true
+            - name: content
+              mountPath: /app/api/content
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            timeoutSeconds: 4
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - |
+                  test "$(curl -fsS --max-time 2 http://127.0.0.1/api/v1/health)" = true
+                  curl -fsS --max-time 2 -o /dev/null http://127.0.0.1/
+            timeoutSeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+      volumes:
+        - name: outline-image-catalog
+          configMap:
+            name: learnhouse-outline-image-catalog
+            optional: true
+        - name: content
+          persistentVolumeClaim:
+            claimName: learnhouse-content

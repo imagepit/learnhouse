@@ -1,0 +1,193 @@
+name: Deploy LearnHouse
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full commit SHA from the public imagepit/learnhouse fork (defaults to imagepit-1.4.5)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: learnhouse-release
+  cancel-in-progress: false
+
+env:
+  IMAGE: docker.io/imagepit/learnhouse
+  RELEASE_BRANCH: learnhouse-release
+
+jobs:
+  publish:
+    if: github.repository == 'imagepit/learnhouse' && github.ref == 'refs/heads/imagepit-1.4.5'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: presenton-dockerhub
+    outputs:
+      digest: ${{ steps.publish.outputs.digest }}
+      source_sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - name: Ensure the Docker Hub repository is private
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+
+          namespace, name = os.environ["IMAGE"].removeprefix("docker.io/").split("/")
+          repositories = f"https://hub.docker.com/v2/namespaces/{namespace}/repositories"
+
+          def request(url, data=None, token=None):
+              headers = {"Accept": "application/json"}
+              if data is not None:
+                  headers["Content-Type"] = "application/json"
+                  data = json.dumps(data).encode()
+              if token is not None:
+                  headers["Authorization"] = f"Bearer {token}"
+              with urlopen(Request(url, data=data, headers=headers), timeout=20) as response:
+                  return json.load(response)
+
+          try:
+              token = request("https://hub.docker.com/v2/auth/token", {
+                  "identifier": os.environ["DOCKER_USERNAME"],
+                  "secret": os.environ["DOCKER_PASSWORD"],
+              })["access_token"]
+              try:
+                  repository = request(f"{repositories}/{name}", token=token)
+              except HTTPError as error:
+                  if error.code != 404:
+                      raise
+                  request(repositories, {
+                      "namespace": namespace,
+                      "name": name,
+                      "is_private": True,
+                  }, token=token)
+                  repository = request(f"{repositories}/{name}", token=token)
+          except HTTPError as error:
+              raise SystemExit(f"Docker Hub repository check failed (HTTP {error.code})") from None
+
+          if repository["is_private"] is not True:
+              raise SystemExit(f"{namespace}/{name} must be private before images are pushed.")
+          print(f"{namespace}/{name} is private.")
+          PYTHON
+
+      - name: Select source ref
+        id: ref
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          if [[ -z "$SOURCE_SHA" ]]; then
+            echo 'ref=refs/heads/imagepit-1.4.5' >> "$GITHUB_OUTPUT"
+          elif [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "ref=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo 'Enter a full, lowercase Git commit SHA.' >&2
+            exit 1
+          fi
+
+      - name: Check out the selected source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify the source is on a fork branch
+        id: source
+        env:
+          REQUESTED_SHA: ${{ inputs.source_sha }}
+        run: |
+          sha="$(git rev-parse HEAD)"
+          test -z "$REQUESTED_SHA" || test "$sha" = "$REQUESTED_SHA"
+          test -n "$(git branch -r --contains "$sha")"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "ref=$IMAGE:$sha-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+
+      - name: Build the Community image for amd64
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          IMAGE_REF: ${{ steps.source.outputs.ref }}
+        run: |
+          docker buildx build --platform linux/amd64 --load \
+            --build-arg LEARNHOUSE_PUBLIC=true --build-arg "BUILD_ID=$SOURCE_SHA" \
+            --label "org.opencontainers.image.revision=$SOURCE_SHA" \
+            --label org.opencontainers.image.source=https://github.com/imagepit/learnhouse \
+            --tag "$IMAGE_REF" .
+
+      - name: Start LearnHouse with PostgreSQL and Redis
+        env:
+          IMAGE_REF: ${{ steps.source.outputs.ref }}
+        run: |
+          git restore --source="$GITHUB_SHA" --worktree -- deploy
+          bash deploy/smoke-test.sh "$IMAGE_REF"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push the verified image
+        id: publish
+        env:
+          IMAGE_REF: ${{ steps.source.outputs.ref }}
+        run: |
+          output="$(docker push "$IMAGE_REF")"
+          printf '%s\n' "$output"
+          digest="$(sed -nE 's/^.*digest: (sha256:[0-9a-f]{64}) size:.*$/\1/p' <<<"$output")"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          docker buildx imagetools inspect "$IMAGE@$digest" >/dev/null
+          if DOCKER_CONFIG="$(mktemp -d)" docker buildx imagetools inspect "$IMAGE@$digest" >/dev/null 2>&1; then
+            echo 'Docker Hub returned the private image without credentials.' >&2
+            exit 1
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+  promote:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update the Argo CD release branch
+        env:
+          DIGEST: ${{ needs.publish.outputs.digest }}
+          SOURCE_SHA: ${{ needs.publish.outputs.source_sha }}
+        run: |
+          git fetch --depth=1 origin "refs/heads/$RELEASE_BRANCH"
+          git switch --detach FETCH_HEAD
+          git restore --source="$GITHUB_SHA" --staged --worktree -- deploy/k8s
+
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          kustomization = Path("deploy/k8s/kustomization.yaml")
+          updated, count = re.subn(
+              r"(?m)^(  - name: ghcr\.io/learnhouse/app)\n(?:    newName: \S+\n)?    digest: sha256:[0-9a-f]{64}$",
+              rf"\g<1>\n    newName: {os.environ['IMAGE']}\n    digest: {os.environ['DIGEST']}",
+              kustomization.read_text(),
+          )
+          if count != 1:
+              raise SystemExit(f"Expected one LearnHouse image, found {count}")
+          kustomization.write_text(updated)
+          PY
+
+          test "$(kubectl kustomize deploy/k8s | grep -cF "image: $IMAGE@$DIGEST")" = 1
+          git add deploy/k8s
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Deploy LearnHouse $SOURCE_SHA" -m "$IMAGE@$DIGEST"
+          git push origin "HEAD:refs/heads/$RELEASE_BRANCH"

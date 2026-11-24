@@ -1,0 +1,93 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: learnhouse-backup-drive
+  namespace: plane
+spec:
+  schedule: "30 6 * * *"
+  timeZone: Asia/Tokyo
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 3300
+      ttlSecondsAfterFinished: 604800
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          nodeSelector:
+            kubernetes.io/hostname: LEARNHOUSE_BACKUP_PV_NODE
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: drive
+              image: pgvector/pgvector:0.8.2-pg16@sha256:00ba258a66dac104fd5171074a0084462a64a1369d8513f3d0a634e2f24d15bc
+              command: [sh, -ec]
+              args:
+                - |
+                  cd /work
+                  umask 077
+                  version=rclone-v1.75.1-linux-amd64
+                  apt-get update -qq >/dev/null 2>&1 &&
+                  apt-get install -y -qq --no-install-recommends python3 tzdata curl unzip ca-certificates >/dev/null 2>&1 &&
+                  curl -fL --connect-timeout 20 --max-time 90 --max-filesize 67108864 \
+                    -o rclone.zip "https://downloads.rclone.org/v1.75.1/$version.zip" >/dev/null 2>&1 &&
+                  echo '982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab  rclone.zip' | sha256sum -c --status &&
+                  unzip -p rclone.zip "$version/rclone" > rclone &&
+                  chmod 0700 rclone && rm rclone.zip &&
+                  test "$(stat -f -c %T /auth)" = tmpfs &&
+                  install -m 0600 /rclone/rclone.conf /auth/rclone.conf || {
+                    echo '{"stage":"client_setup","result":"failed"}'
+                    exit 1
+                  }
+                  exec python3 -B /program/backup.py "$@"
+                - learnhouse-backup-drive
+                - transfer
+              securityContext:
+                allowPrivilegeEscalation: false
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                  ephemeral-storage: 128Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+                  ephemeral-storage: 32Gi
+              volumeMounts:
+                - {name: program, mountPath: /program, readOnly: true}
+                - {name: staging, mountPath: /backup, readOnly: true}
+                - {name: transport, mountPath: /drive-common, readOnly: true}
+                - {name: drive, mountPath: /rclone, readOnly: true}
+                - {name: auth, mountPath: /auth}
+                - {name: work, mountPath: /work}
+          volumes:
+            - name: program
+              configMap:
+                name: learnhouse-backup-program
+            - name: staging
+              hostPath:
+                path: /LEARNHOUSE_BACKUP_PV_PATH_DO_NOT_ENABLE
+                type: Directory
+            - name: transport
+              configMap:
+                name: backup-drive-transport
+            - name: drive
+              secret:
+                secretName: outline-backup-drive-production
+                defaultMode: 0400
+                items:
+                  - {key: rclone.conf, path: rclone.conf}
+            - name: auth
+              emptyDir:
+                medium: Memory
+                sizeLimit: 1Mi
+            - name: work
+              emptyDir:
+                sizeLimit: 30Gi

@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: learnhouse-postgres
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  clusterIP: None
+  selector:
+    app: learnhouse-postgres
+  ports:
+    - name: postgres
+      port: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: learnhouse-postgres
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  serviceName: learnhouse-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: learnhouse-postgres
+  template:
+    metadata:
+      labels:
+        app: learnhouse-postgres
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:0.8.2-pg16@sha256:00ba258a66dac104fd5171074a0084462a64a1369d8513f3d0a634e2f24d15bc
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: learnhouse
+            - name: POSTGRES_USER
+              value: learnhouse
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-env
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-h", "127.0.0.1", "-U", "learnhouse", "-d", "learnhouse"]
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 5Gi

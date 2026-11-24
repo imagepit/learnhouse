@@ -1,0 +1,27 @@
+name: outline-publish
+
+# GitHubの内容をOutlineのコレクション「learnhouse」へ書き込む。処理は再利用ワークフロー outline-sync-publish にある。
+on:
+  push:
+    branches: [imagepit-1.4.5]
+    paths: ["docs/ops/**/*.md", "deploy/**/*.md", ".outline-sync.json"]
+  pull_request:
+    types: [opened, synchronize, reopened, edited, closed]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "書き込む対象（all：mainと開いている全PR、main：mainだけ、数字：そのPRだけ）"
+        required: true
+        default: all
+      force:
+        description: "Outlineの修正が残っていても上書きする（sync-conflictを解消した後に使う）"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    uses: imagepit/agent-skills/.github/workflows/outline-sync-publish.yml@main
+    secrets: inherit

@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: learnhouse
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - redis.yaml
+  - workload.yaml
+configMapGenerator:
+  - name: learnhouse-config
+    envs:
+      - learnhouse.env
+images:
+  - name: ghcr.io/learnhouse/app
+    digest: sha256:4a71190d63f363511781f4917b6f295ff500ab4623e791ffce43afede3f625e9

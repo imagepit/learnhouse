@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: learnhouse-redis
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  clusterIP: None
+  selector:
+    app: learnhouse-redis
+  ports:
+    - name: redis
+      port: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: learnhouse-redis
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  serviceName: learnhouse-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: learnhouse-redis
+  template:
+    metadata:
+      labels:
+        app: learnhouse-redis
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: redis
+          image: redis:7.4-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+          args:
+            - sh
+            - -ec
+            - exec docker-entrypoint.sh redis-server --appendonly yes --requirepass "$REDISCLI_AUTH"
+          ports:
+            - name: redis
+              containerPort: 6379
+          env:
+            - name: REDISCLI_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-env
+                  key: REDIS_PASSWORD
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command: ["sh", "-ec", "redis-cli ping | grep -qx PONG"]
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 1Gi
