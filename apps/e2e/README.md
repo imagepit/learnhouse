@@ -135,3 +135,26 @@ server-verify dispatch, CODE grading, retry caps, due dates, permissions).
 > instance (it passes against `learnhouse dev` / a branch-built image).
 > CODE task type is covered by backend tests only (Judge0 isn't available on a
 > self-host).
+
+## Mixed lesson and quiz load test
+
+Use a dedicated LearnHouse instance, database, Redis and test image bucket. Keep the test account credentials and Playwright storage state outside the repository. Prepare 89 PNG objects in the test bucket with keys `uploads/image-0.png` through `uploads/image-88.png`. Mount a directory containing `catalog.json` on the server and point `LEARNHOUSE_OUTLINE_IMAGE_CATALOG` at that file. On the test instance only, set `LEARNHOUSE_MEASURE_DB_ACQUIRE=1` to record actual pool acquisition. The duration includes queueing, creation of new connections and connection checks. It excludes execution of the application SQL after acquisition.
+
+Set `E2E_BASE_URL` and `LH_LOAD_TARGET` to the test origin and its host, and `LH_LOAD_DIRECTORY` to the host directory containing the catalog and output files. Supply the test admin credentials through the existing E2E configuration. Prepare test users within the instance's signup and login limits. To use already provisioned, distinct test learners, set `LH_LOAD_LEARNERS_FILE` to a private JSON file with 20 entries containing `id`, `email` and `password`. The initial Docker trial used a dedicated Redis instance for fixture setup.
+
+From `apps/e2e`:
+
+```bash
+bun run features/assignments/load/course-quiz-load.ts prepare
+bun run features/assignments/load/course-quiz-load.ts run
+```
+
+Restart the test API after preparation so it loads the newly written fixture catalog. The API loads the catalog on startup. This fixture creates 20 independent learner sessions, a three-section lesson with 90 image references, and a 10-question auto-graded quiz. Set `LH_LOAD_CONTINUE=1` to resume from existing graded attempts. The script starts a new attempt on the same test assignment before reusing a learner.
+
+The default stages use 1, 5, 10 and 20 learners. Each concurrent stage has a lesson-only wave and mixed waves. The mixed wave opens the lesson for one group and confirms final quiz submission for the other after the first image request begins. Learners alternate roles and the script records the observed overlap. `LH_LOAD_LEVELS` and `LH_LOAD_ROUNDS` can narrow a preflight run. Set `LH_LOAD_MIXED_ONLY=1` for a follow-up with only the mixed waves. The 20-person stage keeps at least ten mixed waves.
+
+For a short diagnostic comparison, override the number of mixed waves with `LH_LOAD_DIAGNOSTIC_WAVES`. Set `LH_LOAD_IMAGE_PARALLEL` to limit concurrent Outline image requests per browser context. This setting uses Playwright request routing, which disables the browser HTTP cache. Set it above the maximum images per section in the comparison baseline so both runs use request routing. The wave summary includes the maximum concurrency observed in any one context.
+
+Set `LH_LOAD_SUBMIT_SPACING_MS` to stagger final submissions by a fixed interval after image loading starts. The runner records batched image authorization as `image-batch` and individual redirects as `image-sign`. If an isolated HTTPS test bucket uses a temporary certificate, `LH_LOAD_LOCAL_TLS_SPKI` accepts its Base64 SHA-256 public-key pin for that Chrome run.
+
+Summarize `observations.jsonl` by stage, wave type and operation. Include counts, p50, p95, maximum and the ratio of failed operations to started operations. A successful image path has a redirect from LearnHouse and a successful object response. Correlate the server's `db_acquire` entries with the wave ID. For DB acquisition, include sample counts, p50, p95, maximum, checked-out connections and timeouts by route. Record the image digest, execution host, concurrent learner count, network path and cache conditions alongside the results. Keep signed URLs, browser storage state, credentials and answer text out of shared results.

@@ -3,12 +3,14 @@ import logging
 import os
 import importlib
 import time
+from contextvars import ContextVar
 from config.config import get_learnhouse_config
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from sqlmodel import SQLModel, Session
 from sqlalchemy import event, exc as sa_exc
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 
 def import_all_models():
@@ -53,6 +55,34 @@ learnhouse_config = get_learnhouse_config()
 
 # Check if we're in test mode
 is_testing = os.getenv("TESTING", "false").lower() == "true"
+
+_measure_db_acquisition = os.getenv("LEARNHOUSE_MEASURE_DB_ACQUIRE") == "1"
+_load_trial: ContextVar[tuple[str, str] | None] = ContextVar("db_load_trial", default=None)
+_acquisition_logger = logging.getLogger("uvicorn.error")
+
+
+class MeasuredAsyncPool(AsyncAdaptedQueuePool):
+    def connect(self):
+        trial = _load_trial.get()
+        if trial is None:
+            return super().connect()
+        started = time.perf_counter()
+        outcome = "ok"
+        try:
+            return super().connect()
+        except sa_exc.TimeoutError:
+            outcome = "pool_timeout"
+            raise
+        except BaseException:
+            outcome = "connection_error"
+            raise
+        finally:
+            run, route = trial
+            _acquisition_logger.info(
+                "db_acquire run=%s route=%s result=%s ms=%.3f checked_out=%d",
+                run, route, outcome, (time.perf_counter() - started) * 1000, self.checkedout(),
+            )
+
 
 if is_testing:
     engine = create_async_engine(
@@ -123,6 +153,8 @@ else:
             connect_args=_connect_args,
         )
 
+    if _measure_db_acquisition:
+        engine_kwargs["poolclass"] = MeasuredAsyncPool
     engine = create_async_engine(sql_url, echo=False, **engine_kwargs)  # type: ignore
 
     _PING_AFTER_IDLE_SECONDS = float(os.getenv("LEARNHOUSE_DB_PING_AFTER_IDLE_SECONDS", "10"))
@@ -457,9 +489,22 @@ async def connect_to_db(app: FastAPI):
     logging.info("LearnHouse database has been started.")
 
 
-async def get_db_session() -> AsyncSession:  # type: ignore[override]
-    async with _async_session_factory() as session:
-        yield session
+async def get_db_session(request: Request = None) -> AsyncSession:  # type: ignore[override]
+    if not _measure_db_acquisition or request is None:
+        async with _async_session_factory() as session:
+            yield session
+        return
+
+    run = request.headers.get("x-learnhouse-load-run", "")
+    route = getattr(request.scope.get("route"), "path", "")
+    if not (1 <= len(run) <= 48 and run.isascii() and run.replace("-", "").isalnum()):
+        run = "background"
+    marker = _load_trial.set((run, f"{request.method}:{route}"))
+    try:
+        async with _async_session_factory() as session:
+            yield session
+    finally:
+        _load_trial.reset(marker)
 
 
 async def close_database(app: FastAPI):

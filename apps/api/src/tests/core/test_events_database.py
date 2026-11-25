@@ -582,3 +582,36 @@ def test_pooler_url_uses_small_pool_and_logs(monkeypatch, caplog):
 
     assert received_kwargs.get("pool_size") == 5
     assert "connection pooler" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_measured_pool_records_real_acquisition_and_timeout(caplog):
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        poolclass=database.MeasuredAsyncPool,
+        pool_size=1,
+        max_overflow=0,
+        pool_timeout=0.02,
+    )
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+    try:
+        async with engine.connect():
+            pass
+        assert "db_acquire" not in caplog.text
+
+        marker = database._load_trial.set(("wave-1", "POST:/{assignment_uuid}/submissions"))
+        try:
+            async with engine.connect():
+                with pytest.raises(sa_exc.TimeoutError):
+                    await engine.connect()
+        finally:
+            database._load_trial.reset(marker)
+        events = [record.message for record in caplog.records if record.message.startswith("db_acquire ")]
+        assert len(events) == 2
+        assert "run=wave-1 route=POST:/{assignment_uuid}/submissions result=ok" in events[0]
+        assert "result=pool_timeout" in events[1]
+        assert float(events[1].split(" ms=")[1].split()[0]) >= 15
+    finally:
+        await engine.dispose()
