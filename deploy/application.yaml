@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: learnhouse
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/imagepit/learnhouse.git
+    targetRevision: learnhouse-release
+    path: deploy/k8s
+    kustomize:
+      patches:
+        - target:
+            kind: Deployment
+            name: learnhouse
+          patch: |-
+            - op: add
+              path: /spec/template/spec/containers/0/envFrom/-
+              value:
+                secretRef:
+                  name: learnhouse-outline-preview
+                  optional: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: learnhouse
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - PruneLast=true
+    retry:
+      limit: 5
