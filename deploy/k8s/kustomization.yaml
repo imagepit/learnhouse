@@ -12,4 +12,5 @@ configMapGenerator:
       - learnhouse.env
 images:
   - name: ghcr.io/learnhouse/app
-    digest: sha256:4a71190d63f363511781f4917b6f295ff500ab4623e791ffce43afede3f625e9
+    newName: docker.io/imagepit/learnhouse
+    digest: sha256:dbe9ba5647b2ca2af2ffcff3c59572838c8101907d66572e092d03e55ea7f4e3
