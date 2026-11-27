@@ -98,6 +98,16 @@ spec:
                   name: learnhouse-outline-r2
                   key: secret-access-key
                   optional: true
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-content-r2
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: learnhouse-content-r2
+                  key: AWS_SECRET_ACCESS_KEY
           volumeMounts:
             - name: outline-image-catalog
               mountPath: /etc/learnhouse-outline-images
