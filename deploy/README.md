@@ -149,3 +149,20 @@ uv run deploy/prepare-outline-image-plan.py fresh-snapshot.json \
 
 1. 対象を編集停止にし、移行後に別の編集が入っていないことを確認する。適用したアクティビティを既存のバージョン履歴または `updates.json` の `before` で戻し、本文を読み戻す。
 2. 前の台帳を再適用してPodを再起動する。LearnHouseが起動し、取り消した添付IDには新しく署名を発行しないことを確認する。発行済みの署名付きURLの有効期限は発行から60秒。
+
+## コンテンツ保存先の R2（`learnhouse-content`）設定
+
+`LEARNHOUSE_CONTENT_DELIVERY_TYPE=s3api` により、教材・提出物・画像などのコンテンツを Cloudflare R2 専用バケット（`learnhouse-content`、`content/` プレフィックス）へ保存する。
+
+### Secret 作成（良輔が実行）
+
+Cloudflare R2 で非公開バケット `learnhouse-content` を作成し、同バケットのみに限定した API トークン（Object Read & Write）を発行したうえで、`learnhouse` namespace に Secret `learnhouse-content-r2` を作成する（既存の `learnhouse-outline-r2` とは分離する）。
+
+```sh
+read -rs "?Access Key ID: " KEY_ID; echo
+read -rs "?Secret Access Key: " KEY_SECRET; echo
+printf 'AWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\n' "$KEY_ID" "$KEY_SECRET" | \
+  kubectl --context mbp16 -n learnhouse create secret generic learnhouse-content-r2 --from-env-file=/dev/stdin
+unset KEY_ID KEY_SECRET
+kubectl --context mbp16 -n learnhouse get secret learnhouse-content-r2
+```
